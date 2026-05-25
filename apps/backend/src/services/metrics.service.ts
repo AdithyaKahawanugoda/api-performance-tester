@@ -2,7 +2,6 @@ import { TestRunModel } from '../db/models/index';
 import { NotFoundError } from '../lib/errors';
 import type { AggregatedMetrics, TimelineDataPoint } from '@api-perf/shared';
 import { redisClient } from '../queue/redis.client';
-import { REDIS_CHANNELS } from '@api-perf/shared';
 
 export async function getRunMetrics(runId: string): Promise<AggregatedMetrics> {
   const doc = await TestRunModel.findById(runId).select('metrics status');

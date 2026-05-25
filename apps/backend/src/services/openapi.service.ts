@@ -6,7 +6,7 @@ import { BadRequestError } from '../lib/errors';
 
 const SUPPORTED_METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
-export async function parseOpenAPISpec(content: string, format: 'json' | 'yaml'): Promise<CreateTestConfigInput> {
+export async function parseOpenAPISpec(content: string, _format: 'json' | 'yaml'): Promise<CreateTestConfigInput> {
   let parsed: OpenAPI.Document;
 
   try {
@@ -38,9 +38,6 @@ export async function parseOpenAPISpec(content: string, format: 'json' | 'yaml')
         body = jsonContent?.['example'] ?? jsonContent?.['schema'];
       }
 
-      const securitySchemes = (parsed as Record<string, unknown>)['components'] as
-        | Record<string, unknown>
-        | undefined;
       const headers: Record<string, string> = {};
 
       const security = operation['security'] as Array<Record<string, unknown>> | undefined;

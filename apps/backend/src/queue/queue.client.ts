@@ -2,7 +2,6 @@ import { Queue, QueueEvents } from 'bullmq';
 import { QUEUE_NAMES } from '@api-perf/shared';
 import type { TestJobData, TestJobResult } from '@api-perf/shared';
 import { createRedisClient } from './redis.client';
-import { env } from '../config/env';
 
 export const testQueue = new Queue<TestJobData, TestJobResult>(QUEUE_NAMES.TEST_EXECUTION, {
   connection: createRedisClient('queue'),

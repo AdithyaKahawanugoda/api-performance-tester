@@ -1,6 +1,5 @@
 import { stringify } from 'csv-stringify/sync';
 import PDFDocument from 'pdfkit';
-import type { PassThrough } from 'stream';
 import { getRun } from './run.service';
 import { RequestLogModel } from '../db/models/index';
 import type { TestRun } from '@api-perf/shared';

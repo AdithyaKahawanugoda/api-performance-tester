@@ -78,7 +78,7 @@ function aggregateJobResults(results: TestJobResult[]): AggregatedMetrics {
 }
 
 export function registerQueueEvents(): void {
-  testQueueEvents.on('progress', async ({ jobId, data }) => {
+  testQueueEvents.on('progress', async ({ data }) => {
     const progress = data as { completed: number; total: number; workerId: number; runId: string };
     if (!progress?.runId) return;
 

@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
-import { AppError, ValidationError } from '../lib/errors';
+import { Error as MongooseError } from 'mongoose';
+import { AppError, ValidationError, NotFoundError } from '../lib/errors';
 import { logger } from '../lib/logger';
 
 export function errorHandler(
@@ -12,6 +13,14 @@ export function errorHandler(
     res.status(err.statusCode).json({
       success: false,
       error: { code: err.code, message: err.message, issues: err.issues },
+    });
+    return;
+  }
+
+  if (err instanceof MongooseError.CastError) {
+    res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Resource not found' },
     });
     return;
   }

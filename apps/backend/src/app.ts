@@ -13,7 +13,13 @@ export function createApp(): express.Application {
   const app = express();
 
   app.use(helmet({ crossOriginEmbedderPolicy: false }));
-  app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+  const localhostPattern = /^http:\/\/localhost:\d+$/;
+  const corsOrigin =
+    env.NODE_ENV === 'development'
+      ? (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) =>
+          cb(null, !origin || localhostPattern.test(origin))
+      : env.CORS_ORIGIN;
+  app.use(cors({ origin: corsOrigin, credentials: true }));
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
   app.use(pinoHttp({ logger, autoLogging: env.NODE_ENV !== 'test' }));

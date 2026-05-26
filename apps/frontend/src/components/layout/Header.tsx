@@ -2,6 +2,7 @@
 
 import { Moon, Sun, Menu } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useUiStore } from '@/store/uiStore';
 import { useWsStore } from '@/store/wsStore';
@@ -9,8 +10,11 @@ import { cn } from '@/lib/utils';
 
 export function Header({ title }: { title?: string }) {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const connectionStatus = useWsStore((s) => s.connectionStatus);
+
+  useEffect(() => { setMounted(true); }, []);
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-border px-6">
@@ -40,7 +44,7 @@ export function Header({ title }: { title?: string }) {
           size="icon"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
-          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {mounted && (theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />)}
         </Button>
       </div>
     </header>

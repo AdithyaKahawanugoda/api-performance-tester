@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { getWebSocketClient } from '@/lib/websocket';
 import { useRunStore } from '@/store/runStore';
 import { useWsStore } from '@/store/wsStore';
@@ -18,6 +19,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const ws = getWebSocketClient();
   const { addMetricsWindow, addLogEntry, setRunStatus } = useRunStore();
   const { setStatus, subscribedRuns } = useWsStore();
+  const qc = useQueryClient();
 
   useEffect(() => {
     ws.connect();
@@ -32,12 +34,17 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           break;
         case 'RUN_STATUS_CHANGED':
           setRunStatus(event.payload.runId, event.payload.status);
+          qc.invalidateQueries({ queryKey: ['runs', event.payload.runId] });
           break;
         case 'RUN_COMPLETED':
           setRunStatus(event.payload.runId, 'completed');
+          qc.invalidateQueries({ queryKey: ['runs', event.payload.runId] });
+          qc.invalidateQueries({ queryKey: ['runs'] });
           break;
         case 'RUN_FAILED':
           setRunStatus(event.payload.runId, 'failed');
+          qc.invalidateQueries({ queryKey: ['runs', event.payload.runId] });
+          qc.invalidateQueries({ queryKey: ['runs'] });
           break;
       }
     });

@@ -8,6 +8,9 @@ import { ErrorRateChart } from '@/components/charts/ErrorRateChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatLatency, formatRps } from '@/lib/formatters';
 import { Loader2 } from 'lucide-react';
+import type { RequestLogEntry } from '@api-perf/shared';
+
+const EMPTY_LOGS: RequestLogEntry[] = [];
 
 interface Props {
   runId: string;
@@ -15,7 +18,7 @@ interface Props {
 
 export function LiveRunView({ runId }: Props) {
   const metricsWindows = useLiveMetrics(runId);
-  const logBuffer = useRunStore((s) => s.logBuffer[runId] ?? []);
+  const logBuffer = useRunStore((s) => s.logBuffer[runId] ?? EMPTY_LOGS);
 
   const latest = metricsWindows[metricsWindows.length - 1];
 

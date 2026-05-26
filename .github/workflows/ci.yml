@@ -66,6 +66,9 @@ jobs:
             echo "Waiting for backend... attempt $i/15"
             sleep 2
           done
+          echo "--- backend-smoke container logs ---"
+          docker logs backend-smoke || true
+          echo "--- end logs ---"
           curl -f http://localhost:4000/api/health
-          docker stop backend-smoke
+          docker stop backend-smoke || true
           docker compose -f docker-compose.dev.yml down

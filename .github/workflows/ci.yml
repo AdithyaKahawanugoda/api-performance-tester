@@ -50,8 +50,7 @@ jobs:
 
       - name: Integration smoke test
         run: |
-          docker compose -f docker-compose.dev.yml up -d
-          sleep 8
+          docker compose -f docker-compose.dev.yml up -d --wait
           docker run -d \
             --name backend-smoke \
             --network host \
@@ -62,7 +61,11 @@ jobs:
             -e LOG_LEVEL=info \
             -e CORS_ORIGIN="http://localhost:3000" \
             api-perf/backend:ci
-          sleep 8
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:4000/api/health && break
+            echo "Waiting for backend... attempt $i/15"
+            sleep 2
+          done
           curl -f http://localhost:4000/api/health
           docker stop backend-smoke
           docker compose -f docker-compose.dev.yml down

@@ -3,6 +3,7 @@ import { LineChart } from './LineChart';
 
 interface Props {
   data: MetricsWindow[];
+  height?: number;
 }
 
 const SERIES = [
@@ -11,7 +12,7 @@ const SERIES = [
   { name: 'p99', color: 'var(--warn)' },
 ] as const;
 
-export function LatencyLineChart({ data }: Props) {
+export function LatencyLineChart({ data, height }: Props) {
   const series = [
     { name: 'p50', color: 'var(--accent)', data: data.map((w) => Math.round(w.p50)) },
     { name: 'p95', color: 'var(--info)',   data: data.map((w) => Math.round(w.p95)) },
@@ -20,7 +21,7 @@ export function LatencyLineChart({ data }: Props) {
 
   return (
     <div className="stack-sm">
-      <LineChart series={series} yFormat={(v) => `${Math.round(v)}ms`} />
+      <LineChart series={series} height={height} yFormat={(v) => `${Math.round(v)}ms`} />
       <div className="legend">
         {SERIES.map((s) => (
           <span key={s.name}>

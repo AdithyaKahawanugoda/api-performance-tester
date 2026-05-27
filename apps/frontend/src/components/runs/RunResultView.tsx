@@ -131,18 +131,18 @@ export function RunResultView({ run }: Props) {
         }
         const mw = toMetricsWindows(windows);
         return (
-          <div className="stack">
+          <div className="grid-3">
             <div className="card">
-              <div className="card__head"><div className="card__title">Latency over time</div></div>
-              <div className="card__body"><LatencyLineChart data={mw} /></div>
+              <div className="card__head"><div className="card__title">Latency</div></div>
+              <div className="card__body"><LatencyLineChart data={mw} height={130} /></div>
             </div>
             <div className="card">
-              <div className="card__head"><div className="card__title">RPS over time</div></div>
-              <div className="card__body"><RpsChart data={mw} /></div>
+              <div className="card__head"><div className="card__title">RPS</div></div>
+              <div className="card__body"><RpsChart data={mw} height={130} /></div>
             </div>
             <div className="card">
-              <div className="card__head"><div className="card__title">Error rate over time</div></div>
-              <div className="card__body"><ErrorRateChart data={mw} /></div>
+              <div className="card__head"><div className="card__title">Error rate</div></div>
+              <div className="card__body"><ErrorRateChart data={mw} height={130} /></div>
             </div>
           </div>
         );

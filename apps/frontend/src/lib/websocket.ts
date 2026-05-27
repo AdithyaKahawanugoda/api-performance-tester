@@ -27,7 +27,8 @@ class ApiPerfWebSocket {
   }
 
   connect(): void {
-    if (this.isDestroyed || this.ws?.readyState === WebSocket.OPEN) return;
+    if (this.isDestroyed) return;
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
 
     this.notifyStatus('connecting');
     this.ws = new WebSocket(WS_URL);
@@ -53,12 +54,17 @@ class ApiPerfWebSocket {
 
     this.ws.onerror = () => {
       this.notifyStatus('error');
-      this.ws?.close();
+      // Do NOT call this.ws?.close() here — the browser fires onclose automatically
+      // after onerror. Calling close() manually causes onclose (and scheduleReconnect)
+      // to fire twice, spawning duplicate reconnect chains that eventually pile up.
     };
   }
 
   private scheduleReconnect(): void {
-    if (this.reconnectAttempts >= this.maxReconnects) return;
+    if (this.reconnectAttempts >= this.maxReconnects) {
+      this.notifyStatus('disconnected');
+      return;
+    }
     const delay = Math.min(this.baseDelay * 2 ** this.reconnectAttempts, 16_000);
     this.reconnectAttempts++;
     this.reconnectTimer = setTimeout(() => this.connect(), delay);

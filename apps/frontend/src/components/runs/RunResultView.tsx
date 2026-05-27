@@ -16,7 +16,7 @@ interface Props {
   run: TestRun;
 }
 
-type Tab = 'overview' | 'timeline' | 'endpoints' | 'config';
+type Tab = 'overview' | 'endpoints' | 'config';
 
 function toMetricsWindows(windows: RunWindow[]): MetricsWindow[] {
   return windows.map((w) => ({
@@ -58,7 +58,7 @@ export function RunResultView({ run }: Props) {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div className="tabs" style={{ marginBottom: 0, borderBottom: 'none' }}>
-          {(['overview', 'timeline', 'endpoints', 'config'] as Tab[]).map((t) => (
+          {(['overview', 'endpoints', 'config'] as Tab[]).map((t) => (
             <button
               key={t}
               className={'tabs__item ' + (tab === t ? 'is-active' : '')}
@@ -82,71 +82,65 @@ export function RunResultView({ run }: Props) {
       </div>
 
       {tab === 'overview' && (
-        <div style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
-          <div className="card" style={{ flex: 1, minWidth: 0 }}>
-            <div className="card__head"><div className="card__title">Latency Percentiles</div></div>
-            <div className="card__body">
-              <PercentileBars rows={percentileRows} />
-              <div className="divider" />
-              <div className="grid-2" style={{ gap: 8 }}>
-                <div>
-                  <div className="label">Min</div>
-                  <div className="num" style={{ fontSize: 15, fontWeight: 600 }}>{formatLatency(m.minLatency)}</div>
+        <div className="stack">
+          <div style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
+            <div className="card" style={{ flex: 1, minWidth: 0 }}>
+              <div className="card__head"><div className="card__title">Latency Percentiles</div></div>
+              <div className="card__body">
+                <PercentileBars rows={percentileRows} />
+                <div className="divider" />
+                <div className="grid-2" style={{ gap: 8 }}>
+                  <div>
+                    <div className="label">Min</div>
+                    <div className="num" style={{ fontSize: 15, fontWeight: 600 }}>{formatLatency(m.minLatency)}</div>
+                  </div>
+                  <div>
+                    <div className="label">Max</div>
+                    <div className="num" style={{ fontSize: 15, fontWeight: 600 }}>{formatLatency(m.maxLatency)}</div>
+                  </div>
+                  <div>
+                    <div className="label">Avg</div>
+                    <div className="num" style={{ fontSize: 15, fontWeight: 600 }}>{formatLatency(m.avgLatency)}</div>
+                  </div>
+                  <div>
+                    <div className="label">Avg RPS</div>
+                    <div className="num" style={{ fontSize: 15, fontWeight: 600 }}>{formatRps(m.rps)}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="label">Max</div>
-                  <div className="num" style={{ fontSize: 15, fontWeight: 600 }}>{formatLatency(m.maxLatency)}</div>
-                </div>
-                <div>
-                  <div className="label">Avg</div>
-                  <div className="num" style={{ fontSize: 15, fontWeight: 600 }}>{formatLatency(m.avgLatency)}</div>
-                </div>
-                <div>
-                  <div className="label">Avg RPS</div>
-                  <div className="num" style={{ fontSize: 15, fontWeight: 600 }}>{formatRps(m.rps)}</div>
-                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+              <div className="card__head"><div className="card__title">Status Code Distribution</div></div>
+              <div className="card__body" style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                <StatusCodeChart distribution={m.statusCodeDistribution} />
               </div>
             </div>
           </div>
 
-          <div className="card" style={{ flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-            <div className="card__head"><div className="card__title">Status Code Distribution</div></div>
-            <div className="card__body" style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-              <StatusCodeChart distribution={m.statusCodeDistribution} />
-            </div>
-          </div>
+          {(() => {
+            const windows = m.windows ?? [];
+            if (windows.length === 0) return null;
+            const mw = toMetricsWindows(windows);
+            return (
+              <div className="grid-3">
+                <div className="card">
+                  <div className="card__head"><div className="card__title">Latency</div></div>
+                  <div className="card__body"><LatencyLineChart data={mw} height={130} /></div>
+                </div>
+                <div className="card">
+                  <div className="card__head"><div className="card__title">RPS</div></div>
+                  <div className="card__body"><RpsChart data={mw} height={130} /></div>
+                </div>
+                <div className="card">
+                  <div className="card__head"><div className="card__title">Error rate</div></div>
+                  <div className="card__body"><ErrorRateChart data={mw} height={130} /></div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
-
-      {tab === 'timeline' && (() => {
-        const windows = m.windows ?? [];
-        if (windows.length === 0) {
-          return (
-            <div className="card">
-              <div className="card__body">
-                <p className="dim" style={{ fontSize: 13 }}>Timeline not available for this run.</p>
-              </div>
-            </div>
-          );
-        }
-        const mw = toMetricsWindows(windows);
-        return (
-          <div className="grid-3">
-            <div className="card">
-              <div className="card__head"><div className="card__title">Latency</div></div>
-              <div className="card__body"><LatencyLineChart data={mw} height={130} /></div>
-            </div>
-            <div className="card">
-              <div className="card__head"><div className="card__title">RPS</div></div>
-              <div className="card__body"><RpsChart data={mw} height={130} /></div>
-            </div>
-            <div className="card">
-              <div className="card__head"><div className="card__title">Error rate</div></div>
-              <div className="card__body"><ErrorRateChart data={mw} height={130} /></div>
-            </div>
-          </div>
-        );
-      })()}
 
       {tab === 'endpoints' && (
         <div className="card">

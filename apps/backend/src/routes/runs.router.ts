@@ -12,5 +12,7 @@ router.get('/', asyncHandler(ctrl.list));
 router.get('/:id', asyncHandler(ctrl.getOne));
 router.post('/', testRunRateLimiter, validateBody(StartTestRunSchema), asyncHandler(ctrl.start));
 router.post('/:id/cancel', asyncHandler(ctrl.cancel));
+router.post('/bulk-delete', asyncHandler(ctrl.bulkRemove));
+router.delete('/:id', asyncHandler(ctrl.remove));
 
 export default router;

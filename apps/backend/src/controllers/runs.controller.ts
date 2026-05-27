@@ -22,6 +22,20 @@ export async function cancel(req: Request, res: Response): Promise<void> {
   res.json({ success: true, data: run });
 }
 
+export async function remove(req: Request, res: Response): Promise<void> {
+  await runService.deleteRun(req.params.id as string);
+  res.status(204).send();
+}
+
+export async function bulkRemove(req: Request, res: Response): Promise<void> {
+  const ids = req.body?.ids;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new BadRequestError('Body must contain a non-empty `ids` array');
+  }
+  const deleted = await runService.bulkDeleteRuns(ids as string[]);
+  res.json({ success: true, data: { deleted } });
+}
+
 export async function compare(req: Request, res: Response): Promise<void> {
   const ids = req.query['ids'];
   if (!ids || typeof ids !== 'string') {

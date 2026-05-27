@@ -52,6 +52,23 @@ export function useCancelRun() {
   });
 }
 
+export function useDeleteRun() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/runs/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['runs'] }),
+  });
+}
+
+export function useDeleteRuns() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) =>
+      apiClient.post<{ deleted: number }>('/runs/bulk-delete', { ids }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['runs'] }),
+  });
+}
+
 export function useCompareRuns(ids: string[]) {
   return useQuery({
     queryKey: ['runs', 'compare', ids],

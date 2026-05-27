@@ -99,6 +99,16 @@ export async function cancelRun(id: string): Promise<TestRun> {
   return toTestRun(updated!);
 }
 
+export async function deleteRun(id: string): Promise<void> {
+  const result = await TestRunModel.findByIdAndDelete(id);
+  if (!result) throw new NotFoundError('TestRun');
+}
+
+export async function bulkDeleteRuns(ids: string[]): Promise<number> {
+  const result = await TestRunModel.deleteMany({ _id: { $in: ids } });
+  return result.deletedCount;
+}
+
 export async function compareRuns(ids: string[]): Promise<TestRun[]> {
   const runs = await Promise.all(ids.map((id) => getRun(id)));
   return runs;

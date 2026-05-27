@@ -1,3 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, ::before, ::after {
+    border-color: var(--line);
+  }
+}
+
 /* ============================================================
    PerfTester — design tokens
    Dark-first instrument panel. Sharp hairlines. Tabular numerics.

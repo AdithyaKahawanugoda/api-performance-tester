@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import './globals.css';
 import './design.css';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { QueryProvider } from '@/components/providers/QueryProvider';

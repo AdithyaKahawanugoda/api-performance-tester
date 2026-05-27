@@ -13,6 +13,7 @@ export function ComparisonBarChart({ runs, height = 220 }: Props) {
 
   const groups = ['avg', 'p50', 'p95', 'p99'];
   const series = runs.map((run, i) => ({
+    id: run.id,
     name: run.config.name.length > 14 ? run.config.name.slice(0, 13) + '…' : run.config.name,
     color: RUN_COLORS[i % RUN_COLORS.length],
     values: [
@@ -64,7 +65,7 @@ export function ComparisonBarChart({ runs, height = 220 }: Props) {
       </svg>
       <div className="legend">
         {series.map((s) => (
-          <span key={s.name}>
+          <span key={s.id}>
             <span className="legend__swatch" style={{ background: s.color }} />
             {s.name}
           </span>

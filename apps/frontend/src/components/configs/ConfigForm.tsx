@@ -9,11 +9,12 @@ interface Props {
   defaultValues?: Partial<CreateTestConfigInput>;
   onSubmit: (data: CreateTestConfigInput) => void;
   isLoading?: boolean;
+  isSaved?: boolean;
 }
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 
-export function ConfigForm({ defaultValues, onSubmit, isLoading }: Props) {
+export function ConfigForm({ defaultValues, onSubmit, isLoading, isSaved }: Props) {
   const {
     register,
     handleSubmit,
@@ -119,8 +120,16 @@ export function ConfigForm({ defaultValues, onSubmit, isLoading }: Props) {
         </div>
       </div>
 
-      <button type="submit" className="btn btn--primary btn--lg" disabled={isLoading}>
-        {isLoading ? <><span className="spinner" /> Saving…</> : 'Save Configuration'}
+      <button
+        type="submit"
+        className={'btn btn--lg ' + (isSaved ? 'btn--saved' : 'btn--primary')}
+        disabled={isLoading || isSaved}
+      >
+        {isLoading
+          ? <><span className="spinner" /> Saving…</>
+          : isSaved
+          ? <><Icon name="check" size={14} /> Saved!</>
+          : 'Save Configuration'}
       </button>
     </form>
   );

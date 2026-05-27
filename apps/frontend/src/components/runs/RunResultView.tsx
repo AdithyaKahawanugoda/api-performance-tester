@@ -6,14 +6,28 @@ import { Method } from '@/components/ui/Method';
 import { Icon } from '@/components/ui/Icon';
 import { StatusCodeChart } from '@/components/charts/StatusCodeChart';
 import { PercentileBars } from '@/components/charts/PercentileBars';
+import { LatencyLineChart } from '@/components/charts/LatencyLineChart';
+import { RpsChart } from '@/components/charts/RpsChart';
+import { ErrorRateChart } from '@/components/charts/ErrorRateChart';
 import { formatLatency, formatRps, formatErrorRate, formatDuration } from '@/lib/formatters';
-import type { TestRun } from '@api-perf/shared';
+import type { TestRun, RunWindow, MetricsWindow } from '@api-perf/shared';
 
 interface Props {
   run: TestRun;
 }
 
-type Tab = 'overview' | 'endpoints' | 'config';
+type Tab = 'overview' | 'timeline' | 'endpoints' | 'config';
+
+function toMetricsWindows(windows: RunWindow[]): MetricsWindow[] {
+  return windows.map((w) => ({
+    runId: '', workerIndex: 0,
+    windowStartMs: w.t, windowEndMs: w.t + 500,
+    requestsInWindow: 1, successInWindow: 1 - w.errorRate,
+    failureInWindow: w.errorRate,
+    rps: w.rps, p50: w.p50, p95: w.p95, p99: w.p99,
+    latencies: [],
+  }));
+}
 
 export function RunResultView({ run }: Props) {
   const [tab, setTab] = useState<Tab>('overview');
@@ -44,7 +58,7 @@ export function RunResultView({ run }: Props) {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div className="tabs" style={{ marginBottom: 0, borderBottom: 'none' }}>
-          {(['overview', 'endpoints', 'config'] as Tab[]).map((t) => (
+          {(['overview', 'timeline', 'endpoints', 'config'] as Tab[]).map((t) => (
             <button
               key={t}
               className={'tabs__item ' + (tab === t ? 'is-active' : '')}
@@ -68,8 +82,8 @@ export function RunResultView({ run }: Props) {
       </div>
 
       {tab === 'overview' && (
-        <div className="grid-2">
-          <div className="card">
+        <div style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
+          <div className="card" style={{ flex: 1, minWidth: 0 }}>
             <div className="card__head"><div className="card__title">Latency Percentiles</div></div>
             <div className="card__body">
               <PercentileBars rows={percentileRows} />
@@ -95,14 +109,44 @@ export function RunResultView({ run }: Props) {
             </div>
           </div>
 
-          <div className="card">
+          <div className="card" style={{ flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
             <div className="card__head"><div className="card__title">Status Code Distribution</div></div>
-            <div className="card__body">
+            <div className="card__body" style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
               <StatusCodeChart distribution={m.statusCodeDistribution} />
             </div>
           </div>
         </div>
       )}
+
+      {tab === 'timeline' && (() => {
+        const windows = m.windows ?? [];
+        if (windows.length === 0) {
+          return (
+            <div className="card">
+              <div className="card__body">
+                <p className="dim" style={{ fontSize: 13 }}>Timeline not available for this run.</p>
+              </div>
+            </div>
+          );
+        }
+        const mw = toMetricsWindows(windows);
+        return (
+          <div className="stack">
+            <div className="card">
+              <div className="card__head"><div className="card__title">Latency over time</div></div>
+              <div className="card__body"><LatencyLineChart data={mw} /></div>
+            </div>
+            <div className="card">
+              <div className="card__head"><div className="card__title">RPS over time</div></div>
+              <div className="card__body"><RpsChart data={mw} /></div>
+            </div>
+            <div className="card">
+              <div className="card__head"><div className="card__title">Error rate over time</div></div>
+              <div className="card__body"><ErrorRateChart data={mw} /></div>
+            </div>
+          </div>
+        );
+      })()}
 
       {tab === 'endpoints' && (
         <div className="card">

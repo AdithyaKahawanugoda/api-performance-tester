@@ -35,6 +35,15 @@ export interface EndpointStats {
   p99: number;
 }
 
+export interface RunWindow {
+  t: number;         // windowStartMs
+  rps: number;
+  p50: number;
+  p95: number;
+  p99: number;
+  errorRate: number; // 0.0–1.0
+}
+
 export interface AggregatedMetrics {
   totalRequests: number;
   successCount: number;
@@ -52,6 +61,7 @@ export interface AggregatedMetrics {
   durationMs: number;
   statusCodeDistribution: Record<string, number>;
   endpointStats: EndpointStats[];
+  windows?: RunWindow[];
 }
 
 export interface TestRun {

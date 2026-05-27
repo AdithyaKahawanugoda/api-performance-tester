@@ -13,8 +13,8 @@ export default function ConfigDetailPage() {
   const router = useRouter();
   const { data: config, isLoading } = useConfig(id);
   const { mutateAsync: updateConfig, isPending: isUpdating } = useUpdateConfig(id);
-  const { mutateAsync: deleteConfig } = useDeleteConfig();
-  const { mutateAsync: startRun } = useStartRun();
+  const { mutateAsync: deleteConfig, isPending: isDeleting } = useDeleteConfig();
+  const { mutateAsync: startRun, isPending: isStarting } = useStartRun();
 
   async function handleRun() {
     const run = await startRun(id);
@@ -48,13 +48,11 @@ export default function ConfigDetailPage() {
         sub={config.description ?? `${config.endpoints.length} endpoint${config.endpoints.length !== 1 ? 's' : ''}`}
         actions={
           <div className="row">
-            <button className="btn btn--danger" onClick={handleDelete}>
-              <Icon name="trash" size={13} />
-              Delete
+            <button className="btn btn--danger" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? <><span className="spinner" /> Deleting…</> : <><Icon name="trash" size={13} /> Delete</>}
             </button>
-            <button className="btn btn--primary" onClick={handleRun}>
-              <Icon name="run" size={13} />
-              Run Test
+            <button className="btn btn--primary" onClick={handleRun} disabled={isStarting}>
+              {isStarting ? <><span className="spinner" /> Starting…</> : <><Icon name="run" size={13} /> Run Test</>}
             </button>
           </div>
         }

@@ -12,6 +12,7 @@ import { formatRelativeTime } from '@/lib/formatters';
 
 export default function ConfigsPage() {
   const [search, setSearch] = useState('');
+  const [pendingConfigId, setPendingConfigId] = useState<string | null>(null);
   const { data, isLoading } = useConfigs();
   const { mutateAsync: startRun } = useStartRun();
   const router = useRouter();
@@ -21,8 +22,13 @@ export default function ConfigsPage() {
   );
 
   async function handleRun(configId: string) {
-    const run = await startRun(configId);
-    router.push(`/runs/${run.id}`);
+    setPendingConfigId(configId);
+    try {
+      const run = await startRun(configId);
+      router.push(`/runs/${run.id}`);
+    } finally {
+      setPendingConfigId(null);
+    }
   }
 
   return (
@@ -101,9 +107,14 @@ export default function ConfigsPage() {
                     <Link href={`/configs/${config.id}`} className="btn btn--ghost btn--sm">
                       <Icon name="cog" size={12} />
                     </Link>
-                    <button className="btn btn--sm btn--primary" onClick={() => handleRun(config.id)}>
-                      <Icon name="run" size={12} />
-                      Run
+                    <button
+                      className="btn btn--sm btn--primary"
+                      onClick={() => handleRun(config.id)}
+                      disabled={pendingConfigId === config.id}
+                    >
+                      {pendingConfigId === config.id
+                        ? <><span className="spinner" /> Starting…</>
+                        : <><Icon name="run" size={12} /> Run</>}
                     </button>
                   </div>
                 </div>

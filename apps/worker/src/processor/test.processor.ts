@@ -60,6 +60,7 @@ export const testProcessor: Processor<TestJobData, TestJobResult> = async (job) 
     statusCodes: collector.getStatusCodes(),
     errors: collector.getErrors(),
     requestLogs: collector.getLogs(),
+    windows: collector.getWindows(),
     urlStats,
     startedAt,
     completedAt,

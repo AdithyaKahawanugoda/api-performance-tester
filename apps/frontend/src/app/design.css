@@ -751,6 +751,25 @@ input, textarea, select { font-family: inherit; }
   to { background-position: -200% 0; }
 }
 
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 1.5px solid var(--fg-3);
+  border-top-color: var(--fg-0);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+.btn--primary .spinner {
+  border-color: color-mix(in oklch, var(--accent-ink) 40%, transparent);
+  border-top-color: var(--accent-ink);
+}
+.btn--danger .spinner {
+  border-color: color-mix(in oklch, var(--err) 40%, transparent);
+  border-top-color: var(--err);
+}
+
 /* ============================================================
    Responsive
    ============================================================ */

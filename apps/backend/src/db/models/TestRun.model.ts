@@ -46,6 +46,15 @@ const MetricsSchema = new Schema<AggregatedMetrics>(
     durationMs: Number,
     statusCodeDistribution: { type: Map, of: Number },
     endpointStats: [EndpointStatsSchema],
+    windows: [{
+      _id: false,
+      t: Number,
+      rps: Number,
+      p50: Number,
+      p95: Number,
+      p99: Number,
+      errorRate: Number,
+    }],
   },
   { _id: false },
 );

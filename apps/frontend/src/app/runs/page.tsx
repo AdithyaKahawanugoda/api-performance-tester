@@ -37,6 +37,7 @@ export default function RunsPage() {
               key={f}
               className={'btn btn--ghost btn--sm ' + (statusFilter === f ? 'btn--active' : '')}
               onClick={() => setStatusFilter(f)}
+              disabled={isLoading}
               style={{ textTransform: 'capitalize' }}
             >
               {f}
@@ -45,7 +46,30 @@ export default function RunsPage() {
         </div>
 
         {isLoading ? (
-          <div className="card shimmer" style={{ height: 200 }} />
+          <div className="card">
+            <div className="card__body--flush">
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>Config</th><th>Status</th><th>Requests</th>
+                    <th>Avg</th><th>p50</th><th>p95</th><th>p99</th>
+                    <th>RPS</th><th>Errors</th><th>Started</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <tr key={i}>
+                      <td><div className="shimmer" style={{ height: 14, width: '50%', borderRadius: 3 }} /></td>
+                      <td><div className="shimmer" style={{ height: 18, width: 68, borderRadius: 3 }} /></td>
+                      {Array.from({ length: 8 }).map((__, j) => (
+                        <td key={j}><div className="shimmer" style={{ height: 14, width: 44, borderRadius: 3 }} /></td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : runs.length === 0 ? (
           <EmptyState
             title="No runs found"

@@ -3,9 +3,35 @@ import { redisClient } from './redis.client';
 import { TestRunModel, RequestLogModel } from '../db/models/index';
 import { logger } from '../lib/logger';
 import { REDIS_CHANNELS } from '@api-perf/shared';
-import type { TestJobResult, AggregatedMetrics, HttpMethod } from '@api-perf/shared';
+import type { TestJobResult, AggregatedMetrics, HttpMethod, RunWindow } from '@api-perf/shared';
 import { calculatePercentiles, average } from '@api-perf/shared';
 import { RUN_RESULT_CACHE_PREFIX, JOB_RESULT_TTL_SECONDS } from '../config/constants';
+
+function mergeWindows(allWorkerWindows: RunWindow[][]): RunWindow[] {
+  const buckets = new Map<number, { rps: number[]; p50: number[]; p95: number[]; p99: number[]; errorRate: number[] }>();
+  for (const workerWindows of allWorkerWindows) {
+    for (const w of workerWindows) {
+      const bucket = Math.floor(w.t / 500) * 500;
+      if (!buckets.has(bucket)) buckets.set(bucket, { rps: [], p50: [], p95: [], p99: [], errorRate: [] });
+      const b = buckets.get(bucket)!;
+      b.rps.push(w.rps);
+      b.p50.push(w.p50);
+      b.p95.push(w.p95);
+      b.p99.push(w.p99);
+      b.errorRate.push(w.errorRate);
+    }
+  }
+  return Array.from(buckets.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([t, b]) => ({
+      t,
+      rps: b.rps.reduce((s, v) => s + v, 0),
+      p50: average(b.p50),
+      p95: average(b.p95),
+      p99: average(b.p99),
+      errorRate: average(b.errorRate),
+    }));
+}
 
 function aggregateJobResults(results: TestJobResult[]): AggregatedMetrics {
   const allLatencies: number[] = [];
@@ -59,6 +85,8 @@ function aggregateJobResults(results: TestJobResult[]): AggregatedMetrics {
     };
   });
 
+  const windows = mergeWindows(results.map((r) => r.windows ?? []));
+
   return {
     totalRequests,
     successCount: totalSuccess,
@@ -74,6 +102,7 @@ function aggregateJobResults(results: TestJobResult[]): AggregatedMetrics {
     durationMs,
     statusCodeDistribution,
     endpointStats,
+    windows,
   };
 }
 

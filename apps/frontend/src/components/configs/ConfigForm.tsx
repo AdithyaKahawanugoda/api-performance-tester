@@ -120,7 +120,7 @@ export function ConfigForm({ defaultValues, onSubmit, isLoading }: Props) {
       </div>
 
       <button type="submit" className="btn btn--primary btn--lg" disabled={isLoading}>
-        {isLoading ? 'Saving…' : 'Save Configuration'}
+        {isLoading ? <><span className="spinner" /> Saving…</> : 'Save Configuration'}
       </button>
     </form>
   );

@@ -2,6 +2,7 @@ import type Redis from 'ioredis';
 import { calculatePercentiles } from '@api-perf/shared';
 import { REDIS_CHANNELS } from '@api-perf/shared';
 import type { MetricsWindow, RequestLogEntry } from '@api-perf/shared';
+import type { RunWindow } from '@api-perf/shared';
 import type { RequestResult } from './request.executor';
 
 export class MetricsCollector {
@@ -15,6 +16,7 @@ export class MetricsCollector {
   private allLogs: RequestLogEntry[] = [];
   private urlStats: Record<string, { success: number; failure: number; latencies: number[] }> = {};
   private static readonly MAX_LOGS = 1000;
+  private allWindows: RunWindow[] = [];
   private flushTimer: NodeJS.Timeout | null = null;
 
   constructor(
@@ -81,6 +83,15 @@ export class MetricsCollector {
       ...percentiles,
     };
 
+    this.allWindows.push({
+      t: this.windowStartMs,
+      rps: window.rps,
+      p50: window.p50,
+      p95: window.p95,
+      p99: window.p99,
+      errorRate: window.requestsInWindow > 0 ? window.failureInWindow / window.requestsInWindow : 0,
+    });
+
     const channel = REDIS_CHANNELS.METRICS_WINDOW(this.runId);
     await this.redis.publish(
       channel,
@@ -106,4 +117,5 @@ export class MetricsCollector {
   getErrors(): string[] { return this.allErrors; }
   getLogs(): RequestLogEntry[] { return this.allLogs; }
   getUrlStats(): MetricsCollector['urlStats'] { return this.urlStats; }
+  getWindows(): RunWindow[] { return this.allWindows; }
 }

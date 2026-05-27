@@ -36,3 +36,4 @@ export interface TimelineDataPoint {
   errorRate: number;
   activeWorkers: number;
 }
+

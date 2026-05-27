@@ -53,7 +53,30 @@ export default function DashboardPage() {
             <Link href="/runs" className="btn btn--ghost btn--sm">View all</Link>
           </div>
           <div className="card__body--flush">
-            {runs.length === 0 && !isLoading ? (
+            {isLoading ? (
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>Config</th>
+                    <th>Status</th>
+                    <th>Avg Latency</th>
+                    <th>RPS</th>
+                    <th>Started</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={i}>
+                      <td><div className="shimmer" style={{ height: 14, width: '55%', borderRadius: 3 }} /></td>
+                      <td><div className="shimmer" style={{ height: 18, width: 68, borderRadius: 3 }} /></td>
+                      <td><div className="shimmer" style={{ height: 14, width: 52, borderRadius: 3 }} /></td>
+                      <td><div className="shimmer" style={{ height: 14, width: 44, borderRadius: 3 }} /></td>
+                      <td><div className="shimmer" style={{ height: 14, width: 88, borderRadius: 3 }} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : runs.length === 0 ? (
               <div style={{ padding: 24 }}>
                 <EmptyState
                   title="No test runs yet"

@@ -1,4 +1,4 @@
-import type { TestConfig } from './test.types';
+import type { TestConfig, RunWindow } from './test.types';
 import type { RequestLogEntry } from './metrics.types';
 
 export type { RequestLogEntry };
@@ -21,6 +21,7 @@ export interface TestJobResult {
   errors: string[];
   urlStats: Record<string, { success: number; failure: number; latencies: number[] }>;
   requestLogs: RequestLogEntry[];
+  windows: RunWindow[];
   startedAt: number;
   completedAt: number;
 }

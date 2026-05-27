@@ -6,10 +6,12 @@ interface Props {
 
 function getColor(code: string): string {
   const n = parseInt(code, 10);
+  if (n === 0)              return 'var(--err)';
+  if (n >= 100 && n < 200) return 'var(--fg-2)';
   if (n >= 200 && n < 300) return 'var(--ok)';
   if (n >= 300 && n < 400) return 'var(--info)';
   if (n >= 400 && n < 500) return 'var(--warn)';
-  if (n >= 500) return 'var(--err)';
+  if (n >= 500)             return 'var(--err)';
   return 'var(--fg-3)';
 }
 
@@ -42,11 +44,15 @@ export function StatusCodeChart({ distribution, size = 140, thickness = 22 }: Pr
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-      <svg width={size} height={size} className="chart" style={{ flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ flexShrink: 0, width: size, height: size }}>
         <circle cx={cx} cy={cy} r={r} stroke="var(--bg-2)" strokeWidth={thickness} fill="none" />
-        {arcs.map((a, i) => (
-          <path key={i} d={a.d} stroke={a.color} strokeWidth={thickness} fill="none" strokeLinecap="butt" />
-        ))}
+        {arcs.length === 1 ? (
+          <circle cx={cx} cy={cy} r={r} stroke={arcs[0].color} strokeWidth={thickness} fill="none" />
+        ) : (
+          arcs.map((a, i) => (
+            <path key={i} d={a.d} stroke={a.color} strokeWidth={thickness} fill="none" strokeLinecap="butt" />
+          ))
+        )}
         <text x={cx} y={cy - 4} textAnchor="middle" fill="var(--fg-0)" fontSize="18" fontWeight="600" fontFamily="var(--font-mono)">
           {totalK}
         </text>
@@ -56,7 +62,7 @@ export function StatusCodeChart({ distribution, size = 140, thickness = 22 }: Pr
         {arcs.map((a) => (
           <div key={a.code} className="donut__row">
             <div className="sw" style={{ background: a.color }} />
-            <span className="mono dim">{a.code}</span>
+            <span className="mono dim">{a.code === '0' ? 'timeout' : a.code}</span>
             <span className="num" style={{ marginLeft: 'auto', color: 'var(--fg-1)' }}>{a.count.toLocaleString()}</span>
           </div>
         ))}

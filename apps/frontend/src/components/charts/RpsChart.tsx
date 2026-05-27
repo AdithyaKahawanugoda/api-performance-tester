@@ -1,6 +1,3 @@
-'use client';
-
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { MetricsWindow } from '@api-perf/shared';
 
 interface Props {
@@ -9,29 +6,44 @@ interface Props {
 }
 
 export function RpsChart({ data, height = 200 }: Props) {
-  const chartData = data.map((w) => ({
-    time: new Date(w.windowEndMs).toLocaleTimeString('en', { hour12: false }),
-    rps: Math.round(w.rps * 10) / 10,
-  }));
+  const W = 800;
+  const padL = 42, padR = 14, padT = 14, padB = 24;
+  const values = data.map((w) => Math.round(w.rps * 10) / 10);
+  const maxY = (Math.max(...values, 0)) * 1.1 || 1;
+  const len = Math.max(values.length, 2);
+  const stepX = (W - padL - padR) / Math.max(1, len - 1);
+
+  const yScale = (v: number) => padT + (height - padT - padB) * (1 - v / maxY);
+  const xScale = (i: number) => padL + i * stepX;
+
+  const gridLines = 4;
+  const ticks = Array.from({ length: gridLines + 1 }, (_, i) => (maxY / gridLines) * i);
+
+  const d = values.length > 0
+    ? values.map((v, i) => (i === 0 ? `M${xScale(i)},${yScale(v)}` : `L${xScale(i)},${yScale(v)}`)).join(' ')
+    : '';
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-        <defs>
-          <linearGradient id="rpsGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-        <XAxis dataKey="time" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-        <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-        <Tooltip
-          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 6 }}
-          formatter={(v: number) => [`${v} req/s`]}
+    <svg width="100%" viewBox={`0 0 ${W} ${height}`} className="chart">
+      {ticks.map((t, i) => (
+        <g key={i}>
+          <line className="grid" x1={padL} x2={W - padR} y1={yScale(t)} y2={yScale(t)} />
+          <text className="axis" x={padL - 6} y={yScale(t) + 3} textAnchor="end">{Math.round(t)}</text>
+        </g>
+      ))}
+      {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
+        const x = padL + (W - padL - padR) * p;
+        return <text key={i} className="axis" x={x} y={height - 6} textAnchor="middle">t-{Math.round((1 - p) * (len - 1))}s</text>;
+      })}
+      {d && <path d={d} stroke="var(--accent)" className="line" />}
+      {values.length > 0 && (
+        <circle
+          cx={xScale(values.length - 1)}
+          cy={yScale(values[values.length - 1])}
+          r="2.5"
+          fill="var(--accent)"
         />
-        <Area type="monotone" dataKey="rps" name="RPS" stroke="#3b82f6" fill="url(#rpsGradient)" strokeWidth={2} dot={false} isAnimationActive={false} />
-      </AreaChart>
-    </ResponsiveContainer>
+      )}
+    </svg>
   );
 }

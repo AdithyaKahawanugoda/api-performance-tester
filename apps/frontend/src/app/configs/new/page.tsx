@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Header } from '@/components/layout/Header';
+import { PageHead } from '@/components/shared/PageHead';
 import { ConfigForm } from '@/components/configs/ConfigForm';
 import { useCreateConfig } from '@/hooks/useConfigs';
 import type { CreateTestConfigInput } from '@api-perf/shared';
@@ -16,8 +16,8 @@ export default function NewConfigPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <Header title="New Test Configuration" />
+    <div className="page">
+      <PageHead title="New Configuration" sub="Create a new API load test configuration" />
       <ConfigForm onSubmit={handleSubmit} isLoading={isPending} />
     </div>
   );

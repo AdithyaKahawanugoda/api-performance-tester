@@ -3,13 +3,7 @@
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CreateTestConfigSchema, type CreateTestConfigInput } from '@api-perf/shared';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2 } from 'lucide-react';
+import { Icon } from '@/components/ui/Icon';
 
 interface Props {
   defaultValues?: Partial<CreateTestConfigInput>;
@@ -24,8 +18,6 @@ export function ConfigForm({ defaultValues, onSubmit, isLoading }: Props) {
     register,
     handleSubmit,
     control,
-    setValue,
-    watch,
     formState: { errors },
   } = useForm<CreateTestConfigInput>({
     resolver: zodResolver(CreateTestConfigSchema),
@@ -43,92 +35,93 @@ export function ConfigForm({ defaultValues, onSubmit, isLoading }: Props) {
   const { fields, append, remove } = useFieldArray({ control, name: 'endpoints' });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <Card>
-        <CardHeader><CardTitle className="text-base">Basic Info</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="stack-lg">
+      <div className="card">
+        <div className="card__head"><div className="card__title">Basic Info</div></div>
+        <div className="card__body stack">
           <div>
-            <Label htmlFor="name">Test Name *</Label>
-            <Input id="name" {...register('name')} placeholder="My API Load Test" className="mt-1" />
-            {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
+            <label className="label">Test Name *</label>
+            <input className="input" {...register('name')} placeholder="My API Load Test" />
+            {errors.name && <p style={{ marginTop: 4, fontSize: 11.5, color: 'var(--err)' }}>{errors.name.message}</p>}
           </div>
           <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea id="description" {...register('description')} placeholder="Optional description..." className="mt-1" rows={2} />
+            <label className="label">Description</label>
+            <textarea className="textarea" {...register('description')} placeholder="Optional description…" rows={2} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Endpoints</CardTitle>
-          <Button type="button" variant="outline" size="sm" onClick={() => append({ method: 'GET', url: '', weight: 1 })}>
-            <Plus className="mr-2 h-4 w-4" /> Add
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <div className="card">
+        <div className="card__head">
+          <div className="card__title">Endpoints</div>
+          <button type="button" className="btn btn--sm" onClick={() => append({ method: 'GET', url: '', weight: 1 })}>
+            <Icon name="plus" size={12} />
+            Add
+          </button>
+        </div>
+        <div className="card__body stack-sm">
           {fields.map((field, idx) => (
-            <div key={field.id} className="flex gap-2 items-start">
-              <Select
-                defaultValue={field.method}
-                onValueChange={(v) => setValue(`endpoints.${idx}.method`, v as CreateTestConfigInput['endpoints'][0]['method'])}
+            <div key={field.id} className="field-row" style={{ alignItems: 'flex-start' }}>
+              <select
+                className="select"
+                style={{ width: 100, flexShrink: 0 }}
+                {...register(`endpoints.${idx}.method`)}
               >
-                <SelectTrigger className="w-28">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {HTTP_METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <div className="flex-1">
-                <Input
+                {HTTP_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <div style={{ flex: 1 }}>
+                <input
+                  className="input"
                   {...register(`endpoints.${idx}.url`)}
                   placeholder="https://api.example.com/endpoint"
                 />
                 {errors.endpoints?.[idx]?.url && (
-                  <p className="mt-1 text-xs text-destructive">{errors.endpoints[idx]?.url?.message}</p>
+                  <p style={{ marginTop: 4, fontSize: 11.5, color: 'var(--err)' }}>
+                    {errors.endpoints[idx]?.url?.message}
+                  </p>
                 )}
               </div>
               {fields.length > 1 && (
-                <Button type="button" variant="ghost" size="icon" onClick={() => remove(idx)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <button type="button" className="btn btn--danger btn--sm" onClick={() => remove(idx)}>
+                  <Icon name="trash" size={12} />
+                </button>
               )}
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Load Settings</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {[
-              { name: 'concurrency' as const, label: 'Concurrency', min: 1, max: 500 },
-              { name: 'totalRequests' as const, label: 'Total Requests', min: 1, max: 1000000 },
-              { name: 'timeout' as const, label: 'Timeout (ms)', min: 100, max: 30000 },
-              { name: 'retries' as const, label: 'Retries', min: 0, max: 5 },
-            ].map(({ name, label, min, max }) => (
+      <div className="card">
+        <div className="card__head"><div className="card__title">Load Settings</div></div>
+        <div className="card__body">
+          <div className="grid-4">
+            {([
+              { name: 'concurrency'    as const, label: 'Concurrency',      min: 1,   max: 500     },
+              { name: 'totalRequests'  as const, label: 'Total Requests',   min: 1,   max: 1000000 },
+              { name: 'timeout'        as const, label: 'Timeout (ms)',     min: 100, max: 30000   },
+              { name: 'retries'        as const, label: 'Retries',          min: 0,   max: 5       },
+            ] as const).map(({ name, label, min, max }) => (
               <div key={name}>
-                <Label htmlFor={name}>{label}</Label>
-                <Input
-                  id={name}
+                <label className="label">{label}</label>
+                <input
+                  className="input"
                   type="number"
                   min={min}
                   max={max}
                   {...register(name, { valueAsNumber: true })}
-                  className="mt-1"
                 />
-                {errors[name] && <p className="mt-1 text-xs text-destructive">{errors[name]?.message}</p>}
+                {errors[name] && (
+                  <p style={{ marginTop: 4, fontSize: 11.5, color: 'var(--err)' }}>{errors[name]?.message}</p>
+                )}
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
-        {isLoading ? 'Saving...' : 'Save Configuration'}
-      </Button>
+      <button type="submit" className="btn btn--primary btn--lg" disabled={isLoading}>
+        {isLoading ? 'Saving…' : 'Save Configuration'}
+      </button>
     </form>
   );
 }

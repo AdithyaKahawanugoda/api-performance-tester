@@ -1,70 +1,104 @@
 'use client';
 
 import Link from 'next/link';
-import { Header } from '@/components/layout/Header';
-import { RunStatusBadge } from '@/components/runs/RunStatusBadge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useState } from 'react';
+import { PageHead } from '@/components/shared/PageHead';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { RunStatus } from '@/components/runs/RunStatus';
+import { Icon } from '@/components/ui/Icon';
 import { useRuns } from '@/hooks/useRuns';
 import { formatRelativeTime, formatLatency, formatRps, formatErrorRate } from '@/lib/formatters';
 
+const STATUS_FILTERS = ['all', 'running', 'queued', 'completed', 'failed'] as const;
+type StatusFilter = typeof STATUS_FILTERS[number];
+
 export default function RunsPage() {
-  const { data, isLoading } = useRuns();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const { data, isLoading } = useRuns(statusFilter !== 'all' ? { status: statusFilter } : undefined);
   const runs = data?.items ?? [];
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <Header title="Test Runs" />
+    <div className="page">
+      <PageHead
+        title="Test Runs"
+        sub={data ? `${data.total} run${data.total !== 1 ? 's' : ''}` : undefined}
+        actions={
+          <Link href="/runs/compare" className="btn">
+            <Icon name="cmp" size={13} />
+            Compare
+          </Link>
+        }
+      />
 
-      {isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+      <div className="stack-lg">
+        <div style={{ display: 'flex', gap: 4 }}>
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f}
+              className={'btn btn--ghost btn--sm ' + (statusFilter === f ? 'btn--active' : '')}
+              onClick={() => setStatusFilter(f)}
+              style={{ textTransform: 'capitalize' }}
+            >
+              {f}
+            </button>
+          ))}
         </div>
-      ) : runs.length === 0 ? (
-        <EmptyState
-          title="No runs yet"
-          description="Create a configuration and run a test to see results here."
-          action={<Link href="/configs"><button className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground">View Configs</button></Link>}
-        />
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+
+        {isLoading ? (
+          <div className="card shimmer" style={{ height: 200 }} />
+        ) : runs.length === 0 ? (
+          <EmptyState
+            title="No runs found"
+            description={statusFilter !== 'all' ? `No ${statusFilter} runs.` : 'Create a configuration and run a test to see results here.'}
+            action={
+              statusFilter === 'all' ? (
+                <Link href="/configs" className="btn btn--primary">View Configs</Link>
+              ) : undefined
+            }
+          />
+        ) : (
+          <div className="card">
+            <div className="card__body--flush">
+              <table className="tbl">
                 <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="px-6 py-3">Config</th>
-                    <th className="px-6 py-3">Status</th>
-                    <th className="px-6 py-3">Requests</th>
-                    <th className="px-6 py-3">Avg Latency</th>
-                    <th className="px-6 py-3">RPS</th>
-                    <th className="px-6 py-3">Errors</th>
-                    <th className="px-6 py-3">Started</th>
+                  <tr>
+                    <th>Config</th>
+                    <th>Status</th>
+                    <th>Requests</th>
+                    <th>Avg</th>
+                    <th>p50</th>
+                    <th>p95</th>
+                    <th>p99</th>
+                    <th>RPS</th>
+                    <th>Errors</th>
+                    <th>Started</th>
                   </tr>
                 </thead>
                 <tbody>
                   {runs.map((run) => (
-                    <tr key={run.id} className="border-b hover:bg-muted/30">
-                      <td className="px-6 py-3">
-                        <Link href={`/runs/${run.id}`} className="font-medium hover:underline">
+                    <tr key={run.id}>
+                      <td>
+                        <Link href={`/runs/${run.id}`} style={{ color: 'var(--fg-0)', fontWeight: 500 }}>
                           {run.config.name}
                         </Link>
                       </td>
-                      <td className="px-6 py-3"><RunStatusBadge status={run.status} /></td>
-                      <td className="px-6 py-3 tabular-nums">{run.metrics?.totalRequests.toLocaleString() ?? '—'}</td>
-                      <td className="px-6 py-3 tabular-nums">{run.metrics ? formatLatency(run.metrics.avgLatency) : '—'}</td>
-                      <td className="px-6 py-3 tabular-nums">{run.metrics ? formatRps(run.metrics.rps) : '—'}</td>
-                      <td className="px-6 py-3 tabular-nums">{run.metrics ? formatErrorRate(run.metrics.errorRate) : '—'}</td>
-                      <td className="px-6 py-3 text-muted-foreground">{run.createdAt ? formatRelativeTime(run.createdAt) : '—'}</td>
+                      <td><RunStatus status={run.status} /></td>
+                      <td className="num">{run.metrics?.totalRequests.toLocaleString() ?? '—'}</td>
+                      <td className="num">{run.metrics ? formatLatency(run.metrics.avgLatency) : '—'}</td>
+                      <td className="num">{run.metrics ? formatLatency(run.metrics.p50) : '—'}</td>
+                      <td className="num">{run.metrics ? formatLatency(run.metrics.p95) : '—'}</td>
+                      <td className="num">{run.metrics ? formatLatency(run.metrics.p99) : '—'}</td>
+                      <td className="num">{run.metrics ? formatRps(run.metrics.rps) : '—'}</td>
+                      <td className="num">{run.metrics ? formatErrorRate(run.metrics.errorRate) : '—'}</td>
+                      <td className="dim">{run.createdAt ? formatRelativeTime(run.createdAt) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

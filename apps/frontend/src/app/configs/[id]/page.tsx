@@ -1,11 +1,9 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { Play, Trash2 } from 'lucide-react';
-import { Header } from '@/components/layout/Header';
+import { PageHead } from '@/components/shared/PageHead';
 import { ConfigForm } from '@/components/configs/ConfigForm';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Icon } from '@/components/ui/Icon';
 import { useConfig, useUpdateConfig, useDeleteConfig } from '@/hooks/useConfigs';
 import { useStartRun } from '@/hooks/useRuns';
 import type { UpdateTestConfigInput } from '@api-perf/shared';
@@ -30,20 +28,37 @@ export default function ConfigDetailPage() {
     }
   }
 
-  if (isLoading) return <div className="p-6"><Skeleton className="h-96 w-full" /></div>;
-  if (!config) return <div className="p-6 text-muted-foreground">Config not found</div>;
+  if (isLoading) return (
+    <div className="page">
+      <div className="card shimmer" style={{ height: 400 }} />
+    </div>
+  );
+  if (!config) return (
+    <div className="page">
+      <div className="empty">
+        <p className="empty__title">Config not found</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <Header title={config.name} />
-      <div className="flex justify-end gap-2">
-        <Button variant="destructive" size="sm" className="gap-2" onClick={handleDelete}>
-          <Trash2 className="h-4 w-4" />Delete
-        </Button>
-        <Button className="gap-2" onClick={handleRun}>
-          <Play className="h-4 w-4" />Run Test
-        </Button>
-      </div>
+    <div className="page">
+      <PageHead
+        title={config.name}
+        sub={config.description ?? `${config.endpoints.length} endpoint${config.endpoints.length !== 1 ? 's' : ''}`}
+        actions={
+          <div className="row">
+            <button className="btn btn--danger" onClick={handleDelete}>
+              <Icon name="trash" size={13} />
+              Delete
+            </button>
+            <button className="btn btn--primary" onClick={handleRun}>
+              <Icon name="run" size={13} />
+              Run Test
+            </button>
+          </div>
+        }
+      />
       <ConfigForm
         defaultValues={{ ...config, endpoints: config.endpoints.map((e) => ({ ...e, weight: e.weight ?? 1 })) }}
         onSubmit={(data: UpdateTestConfigInput) => updateConfig(data)}

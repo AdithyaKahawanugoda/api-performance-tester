@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './design.css';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { WebSocketProvider } from '@/components/providers/WebSocketProvider';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { Topbar } from '@/components/layout/Topbar';
 
 export const metadata: Metadata = {
   title: 'API Performance Tester',
@@ -17,11 +19,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <QueryProvider>
             <WebSocketProvider>
-              <div className="flex h-screen overflow-hidden">
+              <div className="app">
                 <Sidebar />
-                <main className="flex-1 overflow-y-auto">
-                  {children}
-                </main>
+                <div className="scrim" />
+                <div className="main">
+                  <Topbar />
+                  <div className="scroll">
+                    {children}
+                  </div>
+                </div>
               </div>
             </WebSocketProvider>
           </QueryProvider>

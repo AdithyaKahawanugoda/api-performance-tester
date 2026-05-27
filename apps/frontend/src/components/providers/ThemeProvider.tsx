@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <NextThemesProvider
-      attribute="class"
+      attribute="data-theme"
       defaultTheme="dark"
       enableSystem
       disableTransitionOnChange

@@ -2,18 +2,26 @@
 
 import { useLiveMetrics } from '@/hooks/useLiveMetrics';
 import { useRunStore } from '@/store/runStore';
+import { KPI } from '@/components/ui/KPI';
+import { Method } from '@/components/ui/Method';
 import { LatencyLineChart } from '@/components/charts/LatencyLineChart';
 import { RpsChart } from '@/components/charts/RpsChart';
 import { ErrorRateChart } from '@/components/charts/ErrorRateChart';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatLatency, formatRps } from '@/lib/formatters';
-import { Loader2 } from 'lucide-react';
 import type { RequestLogEntry } from '@api-perf/shared';
 
 const EMPTY_LOGS: RequestLogEntry[] = [];
 
 interface Props {
   runId: string;
+}
+
+function statusClass(code: number | undefined): string {
+  if (!code) return 'st-x';
+  if (code >= 500) return 'st-5';
+  if (code >= 400) return 'st-4';
+  if (code >= 200) return 'st-2';
+  return '';
 }
 
 export function LiveRunView({ runId }: Props) {
@@ -23,91 +31,78 @@ export function LiveRunView({ runId }: Props) {
   const latest = metricsWindows[metricsWindows.length - 1];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-        Live — {metricsWindows.length} windows collected
+    <div className="stack">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span className="live-dot">Live</span>
+        <span className="dim" style={{ fontSize: 11.5 }}>{metricsWindows.length} windows collected</span>
       </div>
 
-      {latest && (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {[
-            { label: 'Current RPS', value: formatRps(latest.rps) },
-            { label: 'p50 Latency', value: formatLatency(latest.p50) },
-            { label: 'p99 Latency', value: formatLatency(latest.p99) },
-            { label: 'Errors (window)', value: String(latest.failureInWindow) },
-          ].map(({ label, value }) => (
-            <Card key={label}>
-              <CardContent className="pt-4">
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="mt-1 text-xl font-bold tabular-nums">{value}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <div className="grid-4">
+        <KPI label="Current RPS"     value={latest ? formatRps(latest.rps) : '—'}     live />
+        <KPI label="p50 Latency"     value={latest ? formatLatency(latest.p50) : '—'} live />
+        <KPI label="p99 Latency"     value={latest ? formatLatency(latest.p99) : '—'} live />
+        <KPI label="Errors (window)" value={latest ? String(latest.failureInWindow) : '—'} live />
+      </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Latency Percentiles (Live)</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="card">
+        <div className="card__head"><div className="card__title">Latency Percentiles</div></div>
+        <div className="card__body">
           <LatencyLineChart data={metricsWindows} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Requests / Second</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <div className="grid-2">
+        <div className="card">
+          <div className="card__head"><div className="card__title">Requests / Second</div></div>
+          <div className="card__body">
             <RpsChart data={metricsWindows} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Error Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card__head"><div className="card__title">Error Rate</div></div>
+          <div className="card__body">
             <ErrorRateChart data={metricsWindows} />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {logBuffer.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Live Request Log (last {logBuffer.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="max-h-64 overflow-y-auto rounded border border-border font-mono text-xs">
-              <table className="w-full">
-                <thead className="sticky top-0 bg-muted text-left">
+        <div className="card">
+          <div className="card__head">
+            <div className="card__title">Live Request Log</div>
+            <span className="dim" style={{ fontSize: 11.5 }}>last {logBuffer.length}</span>
+          </div>
+          <div className="card__body--flush">
+            <div className="log">
+              <table>
+                <thead>
                   <tr>
-                    <th className="px-3 py-2">Time</th>
-                    <th className="px-3 py-2">Method</th>
-                    <th className="px-3 py-2">URL</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2">Latency</th>
+                    <th>Time</th>
+                    <th>Method</th>
+                    <th>URL</th>
+                    <th>Status</th>
+                    <th>Latency</th>
                   </tr>
                 </thead>
                 <tbody>
                   {logBuffer.slice(0, 100).map((entry, i) => (
-                    <tr key={i} className="border-t border-border hover:bg-muted/50">
-                      <td className="px-3 py-1.5 text-muted-foreground">{new Date(entry.timestamp).toLocaleTimeString()}</td>
-                      <td className="px-3 py-1.5 font-semibold">{entry.method}</td>
-                      <td className="max-w-[200px] truncate px-3 py-1.5 text-muted-foreground">{entry.url}</td>
-                      <td className={`px-3 py-1.5 ${entry.statusCode && entry.statusCode < 400 ? 'text-emerald-500' : 'text-red-500'}`}>{entry.statusCode ?? 'ERR'}</td>
-                      <td className="px-3 py-1.5">{entry.latencyMs.toFixed(1)}ms</td>
+                    <tr key={i}>
+                      <td className="dim">{new Date(entry.timestamp).toLocaleTimeString()}</td>
+                      <td><Method>{entry.method}</Method></td>
+                      <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {entry.url}
+                      </td>
+                      <td className={statusClass(entry.statusCode ?? undefined)}>
+                        {entry.statusCode ?? 'ERR'}
+                      </td>
+                      <td className="num">{entry.latencyMs.toFixed(1)}ms</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

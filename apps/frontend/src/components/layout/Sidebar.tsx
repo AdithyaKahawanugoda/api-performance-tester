@@ -2,71 +2,119 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, BarChart3, GitCompare, Home, Plus, Settings, Upload, Zap } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useUiStore } from '@/store/uiStore';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { useConfigs } from '@/hooks/useConfigs';
+import { useRuns } from '@/hooks/useRuns';
+import { Icon } from '@/components/ui/Icon';
+import type { IconName } from '@/components/ui/Icon';
 
-const navItems = [
-  { href: '/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '/configs', icon: Settings, label: 'Configs' },
-  { href: '/runs', icon: Activity, label: 'Test Runs' },
-  { href: '/runs/compare', icon: GitCompare, label: 'Compare' },
-  { href: '/import', icon: Upload, label: 'Import OpenAPI' },
+interface NavItem {
+  href: string;
+  icon: IconName;
+  label: string;
+  countKey?: 'configs' | 'runs';
+}
+
+const WORKSPACE_NAV: NavItem[] = [
+  { href: '/dashboard', icon: 'home',  label: 'Dashboard' },
+  { href: '/configs',   icon: 'cog',   label: 'Configurations', countKey: 'configs' },
+  { href: '/runs',      icon: 'run',   label: 'Test Runs',       countKey: 'runs' },
+  { href: '/runs/compare', icon: 'cmp', label: 'Compare' },
+];
+
+const DATA_NAV: NavItem[] = [
+  { href: '/import', icon: 'up', label: 'Import OpenAPI' },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useUiStore((s) => s.setSidebarOpen);
 
-  if (!sidebarOpen) return null;
+  const { data: configsData } = useConfigs();
+  const { data: runsData } = useRuns();
+
+  const counts: Record<string, number | undefined> = {
+    configs: configsData?.total,
+    runs: runsData?.total,
+  };
+
+  const isActive = (href: string) =>
+    href === '/dashboard'
+      ? pathname === '/dashboard' || pathname === '/'
+      : pathname.startsWith(href);
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-border bg-sidebar">
-      <div className="flex h-16 items-center gap-2 px-6">
-        <Zap className="h-6 w-6 text-blue-500" />
-        <span className="text-lg font-bold tracking-tight">PerfTester</span>
+    <aside className="side">
+      <div className="side__brand">
+        <div className="side__mark">P</div>
+        <span>PerfTester</span>
       </div>
 
-      <Separator />
-
-      <div className="px-3 py-2">
-        <Link href="/configs/new">
-          <Button className="w-full gap-2" size="sm">
-            <Plus className="h-4 w-4" />
-            New Test
-          </Button>
+      <div style={{ padding: '12px 12px 4px' }}>
+        <Link href="/configs/new" className="btn btn--primary" style={{ width: '100%', justifyContent: 'center' }}>
+          <Icon name="plus" size={13} />
+          New test
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-2">
-        {navItems.map(({ href, icon: Icon, label }) => {
-          const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
-          return (
-            <Link key={href} href={href}>
-              <div
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  active
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50',
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </div>
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="px-4 py-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="h-3 w-3" />
-          API Performance Platform
-        </div>
+      <div>
+        <div className="side__section">Workspace</div>
+        <nav className="side__nav">
+          {WORKSPACE_NAV.map(({ href, icon, label, countKey }) => {
+            const active = isActive(href);
+            const count = countKey ? counts[countKey] : undefined;
+            return (
+              <Link key={href} href={href} className={'side__item ' + (active ? 'is-active' : '')}
+                onClick={() => setSidebarOpen(false)}>
+                <Icon name={icon} size={14} />
+                <span>{label}</span>
+                {count != null && <span className="side__count num">{count}</span>}
+              </Link>
+            );
+          })}
+        </nav>
       </div>
+
+      <div>
+        <div className="side__section">Data</div>
+        <nav className="side__nav">
+          {DATA_NAV.map(({ href, icon, label }) => {
+            const active = isActive(href);
+            return (
+              <Link key={href} href={href} className={'side__item ' + (active ? 'is-active' : '')}
+                onClick={() => setSidebarOpen(false)}>
+                <Icon name={icon} size={14} />
+                <span>{label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      <div className="side__footer">
+        <div style={{
+          width: 24, height: 24, borderRadius: 4,
+          background: 'var(--bg-3)', display: 'grid', placeItems: 'center',
+          color: 'var(--fg-0)', fontWeight: 600, fontSize: 11,
+          flexShrink: 0,
+        }}>
+          AP
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: 'var(--fg-0)', fontSize: 12, fontWeight: 500 }}>Adithya</div>
+          <div className="mono" style={{ fontSize: 10.5, color: 'var(--fg-3)' }}>perf · staging</div>
+        </div>
+        <Icon name="cog" className="dim" size={13} />
+      </div>
+
+      {sidebarOpen && (
+        <div
+          className="scrim"
+          style={{ display: 'block' }}
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
     </aside>
   );
 }

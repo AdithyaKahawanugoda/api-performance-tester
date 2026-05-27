@@ -22,6 +22,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
 
   useEffect(() => {
+    ws.onStatusChange(setStatus);
     ws.connect();
 
     const unsubscribe = ws.onMessage((event: ServerToClientEvent) => {
@@ -52,7 +53,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubscribe();
     };
-  }, [ws, addMetricsWindow, addLogEntry, setRunStatus]);
+  }, [ws, addMetricsWindow, addLogEntry, setRunStatus, setStatus]);
 
   useEffect(() => {
     subscribedRuns.forEach((runId) => ws.subscribe(runId));

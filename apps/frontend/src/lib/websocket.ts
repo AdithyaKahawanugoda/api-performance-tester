@@ -3,6 +3,7 @@
 import type { ServerToClientEvent } from '@api-perf/shared';
 
 type MessageHandler = (event: ServerToClientEvent) => void;
+type StatusHandler = (status: 'connecting' | 'connected' | 'disconnected' | 'error') => void;
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:4000/ws';
 
@@ -12,19 +13,29 @@ class ApiPerfWebSocket {
   private readonly maxReconnects = 8;
   private readonly baseDelay = 1000;
   private handlers = new Set<MessageHandler>();
+  private statusHandler: StatusHandler | null = null;
   private subscribedRuns = new Set<string>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private isDestroyed = false;
 
+  onStatusChange(handler: StatusHandler): void {
+    this.statusHandler = handler;
+  }
+
+  private notifyStatus(status: Parameters<StatusHandler>[0]): void {
+    this.statusHandler?.(status);
+  }
+
   connect(): void {
     if (this.isDestroyed || this.ws?.readyState === WebSocket.OPEN) return;
 
+    this.notifyStatus('connecting');
     this.ws = new WebSocket(WS_URL);
 
     this.ws.onopen = () => {
       this.reconnectAttempts = 0;
+      this.notifyStatus('connected');
       this.subscribedRuns.forEach((runId) => this.sendSubscribe(runId));
-      this.notifyHandlers({ type: 'RUN_STATUS_CHANGED', payload: { runId: '__ws__', status: 'running' } } as unknown as ServerToClientEvent);
     };
 
     this.ws.onmessage = (event) => {
@@ -36,10 +47,12 @@ class ApiPerfWebSocket {
 
     this.ws.onclose = () => {
       if (this.isDestroyed) return;
+      this.notifyStatus('disconnected');
       this.scheduleReconnect();
     };
 
     this.ws.onerror = () => {
+      this.notifyStatus('error');
       this.ws?.close();
     };
   }

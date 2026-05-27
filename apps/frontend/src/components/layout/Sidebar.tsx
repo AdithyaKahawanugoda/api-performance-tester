@@ -39,10 +39,16 @@ export function Sidebar() {
     runs: runsData?.total,
   };
 
-  const isActive = (href: string) =>
-    href === '/dashboard'
-      ? pathname === '/dashboard' || pathname === '/'
-      : pathname.startsWith(href);
+  const allNav = [...WORKSPACE_NAV, ...DATA_NAV];
+  const activeHref = allNav
+    .filter(({ href }) =>
+      href === '/dashboard'
+        ? pathname === '/dashboard' || pathname === '/'
+        : pathname === href || pathname.startsWith(href + '/'),
+    )
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
+  const isActive = (href: string) => href === activeHref;
 
   return (
     <aside className="side">

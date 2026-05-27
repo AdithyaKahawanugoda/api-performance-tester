@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { KPI } from '@/components/ui/KPI';
 import { Method } from '@/components/ui/Method';
 import { Icon } from '@/components/ui/Icon';
@@ -17,6 +17,13 @@ interface Props {
 }
 
 type Tab = 'overview' | 'endpoints' | 'config';
+type ChartKey = 'latency' | 'rps' | 'errorRate';
+
+const CHART_TITLES: Record<ChartKey, string> = {
+  latency: 'Latency over time',
+  rps: 'RPS over time',
+  errorRate: 'Error rate over time',
+};
 
 function toMetricsWindows(windows: RunWindow[]): MetricsWindow[] {
   return windows.map((w) => ({
@@ -31,12 +38,22 @@ function toMetricsWindows(windows: RunWindow[]): MetricsWindow[] {
 
 export function RunResultView({ run }: Props) {
   const [tab, setTab] = useState<Tab>('overview');
+  const [zoomed, setZoomed] = useState<ChartKey | null>(null);
   const m = run.metrics;
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  useEffect(() => {
+    if (!zoomed) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomed(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [zoomed]);
 
   if (!m) {
     return <p className="dim">No metrics available for this run.</p>;
   }
+
+  const mw = (m.windows?.length ?? 0) > 0 ? toMetricsWindows(m.windows!) : null;
 
   const percentileRows = [
     { label: 'p50', value: Math.round(m.p50), color: 'var(--accent)' },
@@ -118,27 +135,23 @@ export function RunResultView({ run }: Props) {
             </div>
           </div>
 
-          {(() => {
-            const windows = m.windows ?? [];
-            if (windows.length === 0) return null;
-            const mw = toMetricsWindows(windows);
-            return (
-              <div className="grid-3">
-                <div className="card">
-                  <div className="card__head"><div className="card__title">Latency</div></div>
-                  <div className="card__body"><LatencyLineChart data={mw} height={130} /></div>
+          {mw && (
+            <div className="grid-3">
+              {([
+                { key: 'latency'   as ChartKey, title: 'Latency',    chart: <LatencyLineChart data={mw} height={130} /> },
+                { key: 'rps'       as ChartKey, title: 'RPS',        chart: <RpsChart data={mw} height={130} /> },
+                { key: 'errorRate' as ChartKey, title: 'Error rate', chart: <ErrorRateChart data={mw} height={130} /> },
+              ]).map(({ key, title, chart }) => (
+                <div key={key} className="card chart-card" onClick={() => setZoomed(key)}>
+                  <div className="card__head">
+                    <div className="card__title">{title}</div>
+                    <Icon name="expand" size={12} className="chart-hint" style={{ color: 'var(--fg-2)' }} />
+                  </div>
+                  <div className="card__body">{chart}</div>
                 </div>
-                <div className="card">
-                  <div className="card__head"><div className="card__title">RPS</div></div>
-                  <div className="card__body"><RpsChart data={mw} height={130} /></div>
-                </div>
-                <div className="card">
-                  <div className="card__head"><div className="card__title">Error rate</div></div>
-                  <div className="card__body"><ErrorRateChart data={mw} height={130} /></div>
-                </div>
-              </div>
-            );
-          })()}
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -194,6 +207,24 @@ export function RunResultView({ run }: Props) {
             }}>
               {JSON.stringify(run.config, null, 2)}
             </pre>
+          </div>
+        </div>
+      )}
+
+      {zoomed && mw && (
+        <div className="chart-overlay" onClick={() => setZoomed(null)}>
+          <div className="chart-overlay__panel" onClick={(e) => e.stopPropagation()}>
+            <div className="card__head">
+              <div className="card__title">{CHART_TITLES[zoomed]}</div>
+              <button className="btn btn--ghost btn--sm" onClick={() => setZoomed(null)}>
+                <Icon name="x" size={12} />
+              </button>
+            </div>
+            <div className="card__body">
+              {zoomed === 'latency'   && <LatencyLineChart data={mw} height={260} />}
+              {zoomed === 'rps'       && <RpsChart data={mw} height={260} />}
+              {zoomed === 'errorRate' && <ErrorRateChart data={mw} height={260} />}
+            </div>
           </div>
         </div>
       )}

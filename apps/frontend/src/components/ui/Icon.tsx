@@ -25,6 +25,7 @@ const ICONS = {
   x:       '<path d="M5 5l10 10M15 5 5 15"/>',
   check:   '<path d="M4 10l5 5 7-9"/>',
   copy:    '<rect x="8" y="8" width="9" height="9" rx="1"/><path d="M3 13V4a1 1 0 0 1 1-1h9"/>',
+  expand:  '<path d="M3 8V3h5M17 12v5h-5"/>',
 } as const;
 
 export type IconName = keyof typeof ICONS;

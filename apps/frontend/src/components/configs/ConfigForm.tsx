@@ -61,6 +61,12 @@ export function ConfigForm({ defaultValues, onSubmit, isLoading, isSaved }: Prop
           </button>
         </div>
         <div className="card__body stack-sm">
+          <div className="field-row" style={{ paddingBottom: 2 }}>
+            <span className="label" style={{ width: 100, flexShrink: 0, marginBottom: 0 }}>Method</span>
+            <span className="label" style={{ flex: 1, marginBottom: 0 }}>URL</span>
+            <span className="label" style={{ width: 64, flexShrink: 0, marginBottom: 0, textAlign: 'center' }}>Weight</span>
+            {fields.length > 1 && <span style={{ width: 28, flexShrink: 0 }} />}
+          </div>
           {fields.map((field, idx) => (
             <div key={field.id} className="field-row" style={{ alignItems: 'flex-start' }}>
               <select
@@ -82,6 +88,17 @@ export function ConfigForm({ defaultValues, onSubmit, isLoading, isSaved }: Prop
                   </p>
                 )}
               </div>
+              <div style={{ flexShrink: 0 }}>
+                <input
+                  className="input"
+                  type="number"
+                  min={1}
+                  max={100}
+                  style={{ width: 64, textAlign: 'center' }}
+                  title="Traffic weight — higher numbers get proportionally more requests"
+                  {...register(`endpoints.${idx}.weight`, { valueAsNumber: true })}
+                />
+              </div>
               {fields.length > 1 && (
                 <button type="button" className="btn btn--danger btn--sm" onClick={() => remove(idx)}>
                   <Icon name="trash" size={12} />
@@ -89,6 +106,9 @@ export function ConfigForm({ defaultValues, onSubmit, isLoading, isSaved }: Prop
               )}
             </div>
           ))}
+          <p style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 4 }}>
+            Weight controls traffic share — e.g. weights 5, 2, 1 distribute ~63%, 25%, 12% of requests.
+          </p>
         </div>
       </div>
 

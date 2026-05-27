@@ -105,7 +105,7 @@ export default function ConfigsPage() {
                   </span>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <Link href={`/configs/${config.id}`} className="btn btn--ghost btn--sm">
-                      <Icon name="cog" size={12} />
+                      <Icon name="pencil" size={12} />
                     </Link>
                     <button
                       className="btn btn--sm btn--primary"

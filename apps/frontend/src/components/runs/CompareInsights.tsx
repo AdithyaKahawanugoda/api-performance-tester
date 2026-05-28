@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { formatLatency, formatRps, formatErrorRate, formatBytes } from '@/lib/formatters';
 import type { TestRun } from '@api-perf/shared';
 
@@ -162,17 +163,54 @@ interface Props {
 }
 
 export function CompareInsights({ runs }: Props) {
+  const [open, setOpen] = useState(false);
   const insights = buildInsights(runs);
   if (insights.length === 0) return null;
 
   return (
     <div className="card">
-      <div className="card__head">
-        <div className="card__title">Comparison Insights</div>
-        <span style={{ fontSize: 11, color: 'var(--fg-3)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          Auto-generated
-        </span>
-      </div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
+          padding: 'var(--card-pad)',
+          background: 'transparent',
+          border: 'none',
+          borderBottom: open ? '1px solid var(--line)' : 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="card__title">Comparison Insights</span>
+          <span style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: 'var(--fg-3)',
+            background: 'var(--bg-2)',
+            border: '1px solid var(--line)',
+            borderRadius: 10,
+            padding: '1px 7px',
+          }}>
+            {insights.length}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 11, color: 'var(--fg-3)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            Auto-generated
+          </span>
+          <svg
+            width="12" height="12" viewBox="0 0 12 12" fill="none"
+            style={{ color: 'var(--fg-3)', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+          >
+            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </button>
+      {open && (
       <div className="card__body" style={{ padding: '10px 14px 14px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {insights.map((ins, i) => {
@@ -248,6 +286,7 @@ export function CompareInsights({ runs }: Props) {
           })}
         </div>
       </div>
+      )}
     </div>
   );
 }

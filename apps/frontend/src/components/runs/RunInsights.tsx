@@ -206,7 +206,7 @@ export function RunInsights({ run }: Props) {
           alignItems: 'center',
           justifyContent: 'space-between',
           width: '100%',
-          padding: 'var(--card-pad)',
+          padding: '14px var(--card-pad)',
           background: 'transparent',
           border: 'none',
           borderBottom: open ? '1px solid var(--line)' : 'none',

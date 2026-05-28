@@ -1,4 +1,5 @@
 import { Sparkline } from './Sparkline';
+import { InfoTooltip } from '@/components/shared/InfoTooltip';
 
 interface KPIProps {
   label: string;
@@ -10,12 +11,16 @@ interface KPIProps {
   sparkColor?: string;
   live?: boolean;
   sub?: string;
+  info?: string;
 }
 
-export function KPI({ label, value, unit, delta, deltaDirection, spark, sparkColor, live, sub }: KPIProps) {
+export function KPI({ label, value, unit, delta, deltaDirection, spark, sparkColor, live, sub, info }: KPIProps) {
   return (
     <div className={'kpi ' + (live ? 'is-live' : '')}>
-      <div className="kpi__label">{label}</div>
+      <div className="kpi__label" style={info ? { display: 'flex', alignItems: 'center', gap: 4 } : {}}>
+        {label}
+        {info && <InfoTooltip text={info} />}
+      </div>
       <div className="kpi__value num">
         {value}
         {unit && <span className="kpi__unit">{unit}</span>}

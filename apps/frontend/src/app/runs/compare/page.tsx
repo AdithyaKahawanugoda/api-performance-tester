@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, KeyboardEvent, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PageHead } from '@/components/shared/PageHead';
 import { RunStatus } from '@/components/runs/RunStatus';
 import { ComparisonBarChart } from '@/components/charts/ComparisonBarChart';
+import { InfoTooltip } from '@/components/shared/InfoTooltip';
+import { CompareInsights } from '@/components/runs/CompareInsights';
 import { useCompareRuns } from '@/hooks/useRuns';
 import { formatLatency, formatRps, formatErrorRate } from '@/lib/formatters';
 
@@ -14,7 +16,7 @@ function parseIds(raw: string): string[] {
   return raw.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
-export default function ComparePage() {
+function CompareContent() {
   const searchParams = useSearchParams();
   const urlIds = searchParams.get('ids') ?? '';
 
@@ -173,7 +175,10 @@ export default function ComparePage() {
           <div className="stack">
             <div className="card">
               <div className="card__head">
-                <div className="card__title">Latency Comparison</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div className="card__title">Latency Comparison</div>
+                  <InfoTooltip text="Side-by-side comparison of key latency percentiles across all selected runs. Each group of bars shows avg, p50, p95, and p99 for every run. Shorter bars mean faster responses." />
+                </div>
               </div>
               <div className="card__body">
                 <ComparisonBarChart runs={runs} />
@@ -198,16 +203,39 @@ export default function ComparePage() {
                       {runs.map((r) => <td key={r.id}><RunStatus status={r.status} /></td>)}
                     </tr>
                     {[
-                      { label: 'Total Requests', key: 'totalRequests' as const, fmt: (v: number) => v.toLocaleString() },
-                      { label: 'Avg Latency',    key: 'avgLatency'    as const, fmt: formatLatency },
-                      { label: 'p50',            key: 'p50'           as const, fmt: formatLatency },
-                      { label: 'p95',            key: 'p95'           as const, fmt: formatLatency },
-                      { label: 'p99',            key: 'p99'           as const, fmt: formatLatency },
-                      { label: 'Avg RPS',        key: 'rps'           as const, fmt: formatRps },
-                      { label: 'Error Rate',     key: 'errorRate'     as const, fmt: formatErrorRate },
-                    ].map(({ label, key, fmt }) => (
+                      { label: 'Total Requests', key: 'totalRequests' as const, fmt: (v: number) => v.toLocaleString(), info: undefined },
+                      {
+                        label: 'Avg Latency', key: 'avgLatency' as const, fmt: formatLatency,
+                        info: 'Mean response time across all requests in this run.',
+                      },
+                      {
+                        label: 'p50', key: 'p50' as const, fmt: formatLatency,
+                        info: 'Median latency — 50% of requests completed faster than this. Represents the typical user experience.',
+                      },
+                      {
+                        label: 'p95', key: 'p95' as const, fmt: formatLatency,
+                        info: '95th percentile latency — 95% of requests finished within this time. Good proxy for tail performance without being skewed by rare outliers.',
+                      },
+                      {
+                        label: 'p99', key: 'p99' as const, fmt: formatLatency,
+                        info: '99th percentile latency — only 1% of requests exceeded this. Captures worst-case latency spikes experienced by a small fraction of users.',
+                      },
+                      {
+                        label: 'Avg RPS', key: 'rps' as const, fmt: formatRps,
+                        info: 'Average requests per second handled throughout the test. Higher means greater throughput capacity.',
+                      },
+                      {
+                        label: 'Error Rate', key: 'errorRate' as const, fmt: formatErrorRate,
+                        info: 'Percentage of requests that returned a 4xx/5xx status or timed out. Below 1% is healthy; above 5% indicates a reliability issue.',
+                      },
+                    ].map(({ label, key, fmt, info }) => (
                       <tr key={label}>
-                        <td><span className="dim">{label}</span></td>
+                        <td>
+                          <span className="dim" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            {label}
+                            {info && <InfoTooltip text={info} />}
+                          </span>
+                        </td>
                         {runs.map((r) => (
                           <td key={r.id} className="num">
                             {r.metrics ? fmt(r.metrics[key] as number) : '—'}
@@ -219,9 +247,19 @@ export default function ComparePage() {
                 </table>
               </div>
             </div>
+
+            <CompareInsights runs={runs} />
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+export default function ComparePage() {
+  return (
+    <Suspense>
+      <CompareContent />
+    </Suspense>
   );
 }

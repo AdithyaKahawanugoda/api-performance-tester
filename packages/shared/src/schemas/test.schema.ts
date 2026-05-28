@@ -22,6 +22,7 @@ export const CreateTestConfigSchema = z.object({
   timeout: z.number().int().min(100).max(30_000).default(DEFAULT_TIMEOUT),
   retries: z.number().int().min(0).max(5).default(DEFAULT_RETRIES),
   tags: z.array(z.string()).optional(),
+  captureResponseSize: z.boolean().optional(),
 });
 
 export const UpdateTestConfigSchema = CreateTestConfigSchema.partial();

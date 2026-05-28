@@ -140,6 +140,32 @@ export function ConfigForm({ defaultValues, onSubmit, isLoading, isSaved }: Prop
         </div>
       </div>
 
+      <div className="card">
+        <div className="card__head"><div className="card__title">Advanced Options</div></div>
+        <div className="card__body stack">
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              style={{ marginTop: 2, flexShrink: 0, accentColor: 'var(--accent)' }}
+              {...register('captureResponseSize')}
+            />
+            <div>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg-0)' }}>
+                Capture Response Size
+              </span>
+              <p style={{ marginTop: 3, fontSize: 11.5, color: 'var(--fg-2)', lineHeight: 1.5 }}>
+                Measures the response body size for each request. When <code>Content-Length</code> is absent,
+                the body is fully drained to count bytes — this adds a small overhead per request.
+              </p>
+              <p style={{ marginTop: 4, fontSize: 11, color: 'var(--warn)', lineHeight: 1.4 }}>
+                ⚠ Enabling this drains the full response body even when only the status code is needed.
+                For high-concurrency tests against large-payload endpoints, this may affect throughput measurements.
+              </p>
+            </div>
+          </label>
+        </div>
+      </div>
+
       <button
         type="submit"
         className={'btn btn--lg ' + (isSaved ? 'btn--saved' : 'btn--primary')}

@@ -34,7 +34,7 @@ export const testProcessor: Processor<TestJobData, TestJobResult> = async (job) 
       }
 
       const endpoint = selectEndpoint(config.endpoints);
-      const result = await executeRequest(endpoint, config.timeout, config.retries);
+      const result = await executeRequest(endpoint, config.timeout, config.retries, config.captureResponseSize ?? false);
       collector.record(result);
 
       if (i > 0 && i % 100 === 0) {

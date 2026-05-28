@@ -1,4 +1,4 @@
-import { formatLatency, formatRps, formatErrorRate } from '@/lib/formatters';
+import { formatLatency, formatRps, formatErrorRate, formatBytes } from '@/lib/formatters';
 import type { TestRun } from '@api-perf/shared';
 
 type InsightType = 'ok' | 'warn' | 'err' | 'info';
@@ -80,6 +80,46 @@ function buildInsights(runs: TestRun[]): Insight[] {
       insights.push({
         type: 'info',
         text: `Tail consistency — ${tightest.name} is tightest (p99 is ${tightest.spread.toFixed(1)}× median) while ${widest.name} is widest (${widest.spread.toFixed(1)}×). All runs show acceptable variance.`,
+      });
+    }
+  }
+
+  // Fastest TTFB
+  const withTtfb = valid.filter((r) => r.metrics?.avgTtfbMs != null);
+  if (withTtfb.length >= 2) {
+    const byTtfb = [...withTtfb].sort((a, b) => (a.metrics!.avgTtfbMs ?? 0) - (b.metrics!.avgTtfbMs ?? 0));
+    const fastTtfb = byTtfb[0];
+    const slowTtfb = byTtfb[byTtfb.length - 1];
+    const diff = (slowTtfb.metrics!.avgTtfbMs ?? 0) - (fastTtfb.metrics!.avgTtfbMs ?? 0);
+    if (diff > 10) {
+      insights.push({
+        type: 'ok',
+        text: `${fastTtfb.config.name} has the lowest avg TTFB (${formatLatency(fastTtfb.metrics!.avgTtfbMs ?? 0)}) — ${formatLatency(diff)} faster server response than ${slowTtfb.config.name} (${formatLatency(slowTtfb.metrics!.avgTtfbMs ?? 0)}).`,
+      });
+    }
+  }
+
+  // Response size winner
+  const withSize = valid.filter((r) => {
+    const stats = r.metrics?.endpointStats;
+    return stats && stats.some((e) => (e.avgResponseBytes ?? 0) > 0);
+  });
+  if (withSize.length >= 2) {
+    const avgSize = (run: TestRun) => {
+      const stats = run.metrics?.endpointStats ?? [];
+      const withBytes = stats.filter((e) => (e.avgResponseBytes ?? 0) > 0);
+      if (withBytes.length === 0) return Infinity;
+      return withBytes.reduce((s, e) => s + (e.avgResponseBytes ?? 0), 0) / withBytes.length;
+    };
+    const sorted = [...withSize].sort((a, b) => avgSize(a) - avgSize(b));
+    const smallest = sorted[0];
+    const largest = sorted[sorted.length - 1];
+    const smallBytes = avgSize(smallest);
+    const largeBytes = avgSize(largest);
+    if (largeBytes - smallBytes > 1024 && smallBytes !== Infinity) {
+      insights.push({
+        type: 'info',
+        text: `${smallest.config.name} returns smaller average responses (${formatBytes(smallBytes)}) vs ${largest.config.name} (${formatBytes(largeBytes)}) — better for bandwidth-constrained clients.`,
       });
     }
   }

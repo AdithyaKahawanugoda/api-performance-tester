@@ -22,6 +22,7 @@ export interface TestConfig {
   timeout: number;
   retries: number;
   tags?: string[];
+  captureResponseSize?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,6 +34,12 @@ export interface EndpointStats {
   failureCount: number;
   avgLatency: number;
   p99: number;
+  avgTtfbMs?: number;
+  p95TtfbMs?: number;
+  avgResponseBytes?: number;
+  cacheHitRate?: number;
+  serverHeader?: string;
+  errorSamples?: string[];
 }
 
 export interface RunWindow {
@@ -42,6 +49,11 @@ export interface RunWindow {
   p95: number;
   p99: number;
   errorRate: number; // 0.0–1.0
+  avgTtfbMs?: number;
+  p95TtfbMs?: number;
+  avgResponseBytes?: number;
+  cpuPercent?: number;
+  memoryMb?: number;
 }
 
 export interface AggregatedMetrics {
@@ -62,6 +74,10 @@ export interface AggregatedMetrics {
   statusCodeDistribution: Record<string, number>;
   endpointStats: EndpointStats[];
   windows?: RunWindow[];
+  avgTtfbMs?: number;
+  p95TtfbMs?: number;
+  peakMemoryMb?: number;
+  avgCpuPercent?: number;
 }
 
 export interface TestRun {

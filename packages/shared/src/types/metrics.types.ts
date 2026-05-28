@@ -25,6 +25,13 @@ export interface RequestLogEntry {
   error?: string;
   timestamp: number;
   requestId: string;
+  ttfbMs?: number;
+  connectMs?: number;
+  dnsMs?: number;
+  tlsMs?: number;
+  responseSizeBytes?: number;
+  errorBody?: string;
+  cacheStatus?: 'hit' | 'miss' | 'unknown';
 }
 
 export interface TimelineDataPoint {

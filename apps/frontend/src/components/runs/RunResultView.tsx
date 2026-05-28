@@ -10,8 +10,12 @@ import { PercentileBars } from '@/components/charts/PercentileBars';
 import { LatencyLineChart } from '@/components/charts/LatencyLineChart';
 import { RpsChart } from '@/components/charts/RpsChart';
 import { ErrorRateChart } from '@/components/charts/ErrorRateChart';
+import { SystemResourceChart } from '@/components/charts/SystemResourceChart';
+import { LatencyBreakdownChart } from '@/components/charts/LatencyBreakdownChart';
+import { ResponseSizeChart } from '@/components/charts/ResponseSizeChart';
 import { RunInsights } from '@/components/runs/RunInsights';
-import { formatLatency, formatRps, formatErrorRate, formatDuration } from '@/lib/formatters';
+import { formatLatency, formatRps, formatErrorRate, formatDuration, formatBytes } from '@/lib/formatters';
+import { detectAuthType, getPayloadSizeLabel, extractQueryParams, getEndpointWeights } from '@/lib/configAnalysis';
 import type { TestRun, RunWindow, MetricsWindow } from '@api-perf/shared';
 
 interface Props {
@@ -64,9 +68,21 @@ export function RunResultView({ run }: Props) {
     { label: 'p99', value: Math.round(m.p99), color: 'var(--err)' },
   ];
 
+  const hasTtfb = m.avgTtfbMs != null;
+  const connectionTimingRows = hasTtfb && m.endpointStats[0] ? (() => {
+    // Best effort: use first endpoint's timing as representative (or aggregate)
+    const avgTtfb = m.avgTtfbMs!;
+    const bodyDownload = Math.max(0, m.avgLatency - avgTtfb);
+    return [
+      { label: 'TTFB',      value: Math.round(avgTtfb),     color: 'var(--accent)' },
+      { label: 'Body',      value: Math.round(bodyDownload), color: 'var(--info)' },
+    ];
+  })() : null;
+
   return (
     <div className="stack">
-      <div className="grid-6">
+      {/* KPI row */}
+      <div className="grid-6" style={hasTtfb || m.bytesReceived > 0 ? { gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' } : {}}>
         <KPI label="Requests"   value={m.totalRequests.toLocaleString()} />
         <KPI label="Success"    value={m.successCount.toLocaleString()} />
         <KPI label="Failures"   value={m.failureCount.toLocaleString()} />
@@ -81,6 +97,20 @@ export function RunResultView({ run }: Props) {
           info="Average requests per second the API handled throughout the test. Reflects throughput capacity — higher means the server can process more load."
         />
         <KPI label="Duration"   value={formatDuration(m.durationMs)} />
+        {hasTtfb && (
+          <KPI
+            label="Avg TTFB"
+            value={formatLatency(m.avgTtfbMs!)}
+            info="Average Time to First Byte — how long from sending the request until the first byte of the response is received. Dominated by server processing and network round-trip time."
+          />
+        )}
+        {m.bytesReceived > 0 && (
+          <KPI
+            label="Data Received"
+            value={formatBytes(m.bytesReceived)}
+            info="Total bytes received across all responses in this test run."
+          />
+        )}
       </div>
 
       <RunInsights run={run} />
@@ -113,6 +143,7 @@ export function RunResultView({ run }: Props) {
       {tab === 'overview' && (
         <div className="stack">
           <div style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
+            {/* Latency Percentiles */}
             <div className="card" style={{ flex: 1, minWidth: 0 }}>
               <div className="card__head">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -144,9 +175,21 @@ export function RunResultView({ run }: Props) {
                     <div className="num" style={{ fontSize: 15, fontWeight: 600 }}>{formatRps(m.rps)}</div>
                   </div>
                 </div>
+
+                {connectionTimingRows && (
+                  <>
+                    <div className="divider" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <span className="label" style={{ marginBottom: 0 }}>Latency Breakdown</span>
+                      <InfoTooltip text="Shows how avg total latency is split between server processing (TTFB — time until first byte) and body download time." />
+                    </div>
+                    <PercentileBars rows={connectionTimingRows} />
+                  </>
+                )}
               </div>
             </div>
 
+            {/* Status Code Distribution */}
             <div className="card" style={{ flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
               <div className="card__head">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -160,6 +203,7 @@ export function RunResultView({ run }: Props) {
             </div>
           </div>
 
+          {/* Time-series charts */}
           {mw && (
             <div className="grid-3">
               {([
@@ -195,6 +239,47 @@ export function RunResultView({ run }: Props) {
               ))}
             </div>
           )}
+
+          {/* Advanced charts row */}
+          <div className="grid-3">
+            <div className="card">
+              <div className="card__head">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div className="card__title">TTFB Breakdown by Endpoint</div>
+                  <InfoTooltip text="Stacked bars showing Time to First Byte (server processing, accent) vs body download time (muted blue) per endpoint. Helps pinpoint whether latency is in server logic or data transfer." />
+                </div>
+              </div>
+              <div className="card__body">
+                <LatencyBreakdownChart endpoints={m.endpointStats} />
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card__head">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div className="card__title">Response Size by Endpoint</div>
+                  <InfoTooltip text="Average response payload size per endpoint. Large responses (>50KB, orange) may benefit from pagination, field filtering, or gzip compression." />
+                </div>
+              </div>
+              <div className="card__body">
+                <ResponseSizeChart endpoints={m.endpointStats} />
+              </div>
+            </div>
+
+            {mw && (
+              <div className="card">
+                <div className="card__head">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div className="card__title">System Resources</div>
+                    <InfoTooltip text="Worker CPU usage (%) and heap memory (MB) over the test duration. A steadily rising memory line may indicate a memory leak; CPU spikes correlate with load bursts." />
+                  </div>
+                </div>
+                <div className="card__body">
+                  <SystemResourceChart windows={m.windows!} height={160} />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -211,6 +296,24 @@ export function RunResultView({ run }: Props) {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       Avg Latency
                       <InfoTooltip text="Mean response time for this endpoint across all requests during the test." />
+                    </span>
+                  </th>
+                  <th>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Avg TTFB
+                      <InfoTooltip text="Average Time to First Byte for this endpoint — server processing + network round trip, before body download begins." />
+                    </span>
+                  </th>
+                  <th>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Avg Size
+                      <InfoTooltip text="Average response payload size. Only populated when 'Capture Response Size' is enabled on the config, or when the server returns a Content-Length header." />
+                    </span>
+                  </th>
+                  <th>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Cache Hit%
+                      <InfoTooltip text="Fraction of requests that received a cache hit (X-Cache: HIT or CF-Cache-Status: HIT). Only detectable via response headers." />
                     </span>
                   </th>
                   <th>
@@ -235,31 +338,152 @@ export function RunResultView({ run }: Props) {
                     <td className="num" style={{ color: 'var(--ok)' }}>{e.successCount.toLocaleString()}</td>
                     <td className="num" style={{ color: 'var(--err)' }}>{e.failureCount.toLocaleString()}</td>
                     <td className="num">{formatLatency(e.avgLatency)}</td>
+                    <td className="num">{e.avgTtfbMs != null ? formatLatency(e.avgTtfbMs) : <span className="dim">—</span>}</td>
+                    <td className="num">{e.avgResponseBytes != null && e.avgResponseBytes > 0 ? formatBytes(e.avgResponseBytes) : <span className="dim">—</span>}</td>
+                    <td className="num">
+                      {e.cacheHitRate != null
+                        ? <span style={{ color: e.cacheHitRate > 0.5 ? 'var(--ok)' : e.cacheHitRate > 0 ? 'var(--warn)' : 'var(--fg-2)' }}>
+                            {(e.cacheHitRate * 100).toFixed(0)}%
+                          </span>
+                        : <span className="dim">—</span>
+                      }
+                    </td>
                     <td className="num">{formatLatency(e.p99)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {/* Error samples */}
+          {m.endpointStats.some((e) => (e.errorSamples?.length ?? 0) > 0) && (
+            <div className="card__body" style={{ borderTop: '1px solid var(--line-soft)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-0)' }}>Error Samples</span>
+                <InfoTooltip text="Captured response bodies from failed (4xx/5xx) requests — up to 5 distinct messages per endpoint." />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {m.endpointStats.filter((e) => (e.errorSamples?.length ?? 0) > 0).map((e, i) => (
+                  <div key={i}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <Method>{e.method}</Method>
+                      <span className="mono dim" style={{ fontSize: 11 }}>{e.url.length > 60 ? e.url.slice(0, 59) + '…' : e.url}</span>
+                    </div>
+                    {e.errorSamples!.map((s, j) => (
+                      <pre key={j} style={{
+                        fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--err)',
+                        background: 'color-mix(in oklch, var(--err) 6%, var(--bg-0))',
+                        border: '1px solid color-mix(in oklch, var(--err) 20%, var(--line))',
+                        borderRadius: 'var(--radius-sm)', padding: '6px 10px', margin: '4px 0',
+                        overflow: 'auto', maxHeight: 80, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                      }}>
+                        {s}
+                      </pre>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {tab === 'config' && (
-        <div className="card">
-          <div className="card__body">
-            <pre style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11.5,
-              color: 'var(--fg-1)',
-              background: 'var(--bg-0)',
-              border: '1px solid var(--line)',
-              borderRadius: 'var(--radius-sm)',
-              padding: 14,
-              overflow: 'auto',
-              maxHeight: 480,
-            }}>
-              {JSON.stringify(run.config, null, 2)}
-            </pre>
+        <div className="stack">
+          {/* Config Analysis */}
+          <div className="card">
+            <div className="card__head">
+              <div className="card__title">Config Analysis</div>
+            </div>
+            <div className="card__body">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {run.config.endpoints.map((ep, i) => {
+                  const authType = detectAuthType(ep.headers);
+                  const payloadLabel = getPayloadSizeLabel(ep.body);
+                  const queryParams = extractQueryParams(ep.url);
+                  return (
+                    <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="row" style={{ gap: 8 }}>
+                        <Method>{ep.method}</Method>
+                        <span className="mono" style={{ fontSize: 11.5, color: 'var(--fg-1)' }}>{ep.url}</span>
+                      </div>
+                      <div className="grid-4" style={{ gap: 8 }}>
+                        <div>
+                          <div className="label" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            Auth Type
+                            <InfoTooltip text="Detected from the Authorization or API key headers configured for this endpoint." />
+                          </div>
+                          <span className="tag" style={{ color: authType === 'None' ? 'var(--fg-3)' : 'var(--info)' }}>{authType}</span>
+                        </div>
+                        <div>
+                          <div className="label" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            Payload Size
+                            <InfoTooltip text="Estimated size of the request body (JSON serialized). Larger payloads increase upload time and server parsing overhead." />
+                          </div>
+                          <span className="tag">{payloadLabel}</span>
+                        </div>
+                        <div>
+                          <div className="label" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            Query Params
+                            <InfoTooltip text="Query parameter keys extracted from the URL. Values are not shown." />
+                          </div>
+                          <span className="tag" style={{ color: queryParams.length > 0 ? 'var(--fg-1)' : 'var(--fg-3)' }}>
+                            {queryParams.length > 0 ? queryParams.join(', ') : 'None'}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="label">Weight</div>
+                          <span className="tag">{ep.weight ?? 1}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Traffic split */}
+                {run.config.endpoints.length > 1 && (() => {
+                  const weights = getEndpointWeights(run.config.endpoints);
+                  return (
+                    <>
+                      <div className="divider" style={{ margin: '4px 0' }} />
+                      <div>
+                        <div className="label" style={{ marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          Traffic Distribution
+                          <InfoTooltip text="How traffic is split across endpoints based on their configured weights." />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {weights.map((w, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ width: 240, fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {w.label}
+                              </div>
+                              <div style={{ flex: 1, height: 14, background: 'var(--bg-2)', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ width: `${w.percent}%`, height: '100%', background: 'var(--accent)', opacity: 0.7 }} />
+                              </div>
+                              <span className="num dim" style={{ fontSize: 11.5, width: 40, textAlign: 'right' }}>{w.percent.toFixed(0)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+
+          {/* Raw config JSON */}
+          <div className="card">
+            <div className="card__head"><div className="card__title">Raw Config</div></div>
+            <div className="card__body">
+              <pre style={{
+                fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg-1)',
+                background: 'var(--bg-0)', border: '1px solid var(--line)',
+                borderRadius: 'var(--radius-sm)', padding: 14, overflow: 'auto', maxHeight: 480,
+              }}>
+                {JSON.stringify(run.config, null, 2)}
+              </pre>
+            </div>
           </div>
         </div>
       )}

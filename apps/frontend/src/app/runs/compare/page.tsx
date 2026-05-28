@@ -8,7 +8,7 @@ import { ComparisonBarChart } from '@/components/charts/ComparisonBarChart';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { CompareInsights } from '@/components/runs/CompareInsights';
 import { useCompareRuns } from '@/hooks/useRuns';
-import { formatLatency, formatRps, formatErrorRate } from '@/lib/formatters';
+import { formatLatency, formatRps, formatErrorRate, formatBytes } from '@/lib/formatters';
 
 const MAX_RUNS = 4;
 
@@ -243,6 +243,43 @@ function CompareContent() {
                         ))}
                       </tr>
                     ))}
+                    {runs.some((r) => r.metrics?.avgTtfbMs != null) && (
+                      <tr>
+                        <td>
+                          <span className="dim" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            Avg TTFB
+                            <InfoTooltip text="Average Time To First Byte — time from sending the request until the first byte of the response arrives. Measures server processing + network travel time, before body download begins." />
+                          </span>
+                        </td>
+                        {runs.map((r) => (
+                          <td key={r.id} className="num">
+                            {r.metrics?.avgTtfbMs != null ? formatLatency(r.metrics.avgTtfbMs) : '—'}
+                          </td>
+                        ))}
+                      </tr>
+                    )}
+                    {runs.some((r) => r.metrics?.endpointStats?.some((e) => (e.avgResponseBytes ?? 0) > 0)) && (
+                      <tr>
+                        <td>
+                          <span className="dim" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            Avg Response Size
+                            <InfoTooltip text="Average response body size across all endpoints, weighted by number of requests. Smaller values mean less bandwidth consumed per request." />
+                          </span>
+                        </td>
+                        {runs.map((r) => {
+                          const stats = r.metrics?.endpointStats ?? [];
+                          const withBytes = stats.filter((e) => (e.avgResponseBytes ?? 0) > 0);
+                          const avg = withBytes.length > 0
+                            ? withBytes.reduce((s, e) => s + (e.avgResponseBytes ?? 0), 0) / withBytes.length
+                            : null;
+                          return (
+                            <td key={r.id} className="num">
+                              {avg != null ? formatBytes(avg) : '—'}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

@@ -1,4 +1,4 @@
-import { formatLatency, formatRps, formatErrorRate, formatDuration } from '@/lib/formatters';
+import { formatLatency, formatRps, formatErrorRate, formatDuration, formatBytes } from '@/lib/formatters';
 import type { TestRun } from '@api-perf/shared';
 
 type InsightType = 'ok' | 'warn' | 'err' | 'info';
@@ -55,6 +55,64 @@ function buildInsights(run: TestRun): Insight[] {
     insights.push({
       type: 'info',
       text: `Slowest endpoint: ${slowest.method} ${shorten(slowest.url)} (${formatLatency(slowest.avgLatency)} avg). Fastest: ${fastest.method} ${shorten(fastest.url)} (${formatLatency(fastest.avgLatency)} avg).`,
+    });
+  }
+
+  // TTFB proportion
+  if (m.avgTtfbMs != null && m.avgLatency > 0) {
+    const ttfbPct = (m.avgTtfbMs / m.avgLatency) * 100;
+    if (ttfbPct > 70) {
+      insights.push({
+        type: 'warn',
+        text: `Server processing dominates latency — TTFB is ${ttfbPct.toFixed(0)}% of the average response time (${formatLatency(m.avgTtfbMs)} of ${formatLatency(m.avgLatency)}). Consider response streaming, edge caching, or query optimization.`,
+      });
+    } else if (ttfbPct < 30 && m.avgLatency > 100) {
+      insights.push({
+        type: 'info',
+        text: `TTFB is only ${ttfbPct.toFixed(0)}% of total latency (${formatLatency(m.avgTtfbMs)}) — most time is spent transferring the response body. Consider compression or pagination for large payloads.`,
+      });
+    }
+  }
+
+  // Large responses
+  if (m.endpointStats) {
+    const largeEndpoints = m.endpointStats.filter((e) => (e.avgResponseBytes ?? 0) > 50_000);
+    if (largeEndpoints.length > 0) {
+      const top = largeEndpoints.sort((a, b) => (b.avgResponseBytes ?? 0) - (a.avgResponseBytes ?? 0))[0];
+      insights.push({
+        type: 'warn',
+        text: `Large responses detected on ${top.method} ${shorten(top.url)} (avg ${formatBytes(top.avgResponseBytes ?? 0)}). Consider pagination, field filtering, or enabling gzip compression to reduce transfer size.`,
+      });
+    }
+  }
+
+  // Cache effectiveness
+  if (m.endpointStats) {
+    const withCache = m.endpointStats.filter((e) => e.cacheHitRate != null);
+    if (withCache.length > 0) {
+      const avgHitRate = withCache.reduce((s, e) => s + (e.cacheHitRate ?? 0), 0) / withCache.length;
+      if (avgHitRate > 0.5) {
+        insights.push({
+          type: 'ok',
+          text: `Strong cache effectiveness — ${(avgHitRate * 100).toFixed(0)}% of cacheable requests are cache hits, significantly reducing backend load.`,
+        });
+      } else if (avgHitRate === 0) {
+        const getEndpoints = withCache.filter((e) => e.method === 'GET');
+        if (getEndpoints.length > 0) {
+          insights.push({
+            type: 'info',
+            text: `No cache hits detected on GET endpoints. A CDN or in-memory cache layer could significantly reduce latency and server load for repeated requests.`,
+          });
+        }
+      }
+    }
+  }
+
+  // Memory growth
+  if (m.peakMemoryMb != null && m.peakMemoryMb > 200) {
+    insights.push({
+      type: 'warn',
+      text: `Peak worker memory reached ${m.peakMemoryMb.toFixed(0)} MB during the test. This may indicate GC pressure under high concurrency — monitor for memory leaks if memory keeps growing across test windows.`,
     });
   }
 

@@ -11,6 +11,18 @@ export interface TestJobData {
   totalWorkers: number;
 }
 
+export interface UrlStat {
+  success: number;
+  failure: number;
+  latencies: number[];
+  ttfbs: number[];
+  responseSizes: number[];
+  cacheHits: number;
+  cacheMisses: number;
+  serverHeader?: string;
+  errorSamples: string[];
+}
+
 export interface TestJobResult {
   runId: string;
   workerIndex: number;
@@ -19,7 +31,7 @@ export interface TestJobResult {
   latencies: number[];
   statusCodes: number[];
   errors: string[];
-  urlStats: Record<string, { success: number; failure: number; latencies: number[] }>;
+  urlStats: Record<string, UrlStat>;
   requestLogs: RequestLogEntry[];
   windows: RunWindow[];
   startedAt: number;

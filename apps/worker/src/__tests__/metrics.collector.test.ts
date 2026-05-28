@@ -1,12 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MetricsCollector } from '../processor/metrics.collector';
 import type { Redis } from 'ioredis';
+import type { RequestResult } from '../processor/request.executor';
 
 const makeRedis = () =>
   ({
     publish: vi.fn().mockResolvedValue(0),
     quit: vi.fn().mockResolvedValue(undefined),
   }) as unknown as Redis;
+
+function r(statusCode: number, latencyMs: number, extra: Partial<RequestResult> = {}): RequestResult {
+  return {
+    statusCode, latencyMs,
+    url: 'http://a.com', method: 'GET',
+    responseSizeBytes: 0, cacheStatus: 'unknown',
+    ...extra,
+  };
+}
 
 describe('MetricsCollector', () => {
   let redis: Redis;
@@ -23,43 +33,43 @@ describe('MetricsCollector', () => {
   });
 
   it('records latency for each request', () => {
-    collector.record({ statusCode: 200, latencyMs: 42, url: 'http://a.com', method: 'GET' });
-    collector.record({ statusCode: 200, latencyMs: 88, url: 'http://a.com', method: 'GET' });
+    collector.record(r(200, 42));
+    collector.record(r(200, 88));
 
     expect(collector.getLatencies()).toEqual([42, 88]);
   });
 
   it('records status codes', () => {
-    collector.record({ statusCode: 200, latencyMs: 10, url: 'http://a.com', method: 'GET' });
-    collector.record({ statusCode: 404, latencyMs: 20, url: 'http://a.com', method: 'GET' });
-    collector.record({ statusCode: 500, latencyMs: 30, url: 'http://a.com', method: 'GET' });
+    collector.record(r(200, 10));
+    collector.record(r(404, 20));
+    collector.record(r(500, 30));
 
     expect(collector.getStatusCodes()).toEqual([200, 404, 500]);
   });
 
   it('records error messages for failed requests', () => {
-    collector.record({ statusCode: 0, latencyMs: 5, url: 'http://a.com', method: 'GET', error: 'ECONNREFUSED' });
+    collector.record(r(0, 5, { error: 'ECONNREFUSED' }));
 
     expect(collector.getErrors()).toContain('ECONNREFUSED');
   });
 
   it('does not record error for successful requests', () => {
-    collector.record({ statusCode: 200, latencyMs: 10, url: 'http://a.com', method: 'GET' });
+    collector.record(r(200, 10));
 
     expect(collector.getErrors()).toHaveLength(0);
   });
 
   it('does not record error for 4xx responses without error string', () => {
-    collector.record({ statusCode: 404, latencyMs: 10, url: 'http://a.com', method: 'GET' });
+    collector.record(r(404, 10));
 
     expect(collector.getErrors()).toHaveLength(0);
   });
 
   it('tracks per-URL stats grouped by method:url', () => {
-    collector.record({ statusCode: 200, latencyMs: 50, url: 'http://a.com', method: 'GET' });
-    collector.record({ statusCode: 200, latencyMs: 80, url: 'http://a.com', method: 'GET' });
-    collector.record({ statusCode: 500, latencyMs: 120, url: 'http://a.com', method: 'GET' });
-    collector.record({ statusCode: 201, latencyMs: 60, url: 'http://a.com', method: 'POST' });
+    collector.record(r(200, 50));
+    collector.record(r(200, 80));
+    collector.record(r(500, 120));
+    collector.record({ ...r(201, 60), method: 'POST' });
 
     const stats = collector.getUrlStats();
     expect(stats['GET:http://a.com']?.success).toBe(2);
@@ -71,13 +81,13 @@ describe('MetricsCollector', () => {
 
   it('caps request logs at 1000 entries', () => {
     for (let i = 0; i < 1100; i++) {
-      collector.record({ statusCode: 200, latencyMs: i, url: 'http://a.com', method: 'GET' });
+      collector.record(r(200, i));
     }
     expect(collector.getLogs()).toHaveLength(1000);
   });
 
   it('emits a metrics window to Redis on the interval', async () => {
-    collector.record({ statusCode: 200, latencyMs: 55, url: 'http://a.com', method: 'GET' });
+    collector.record(r(200, 55));
 
     vi.advanceTimersByTime(150);
     await Promise.resolve();
@@ -98,7 +108,7 @@ describe('MetricsCollector', () => {
   });
 
   it('flush emits remaining data and stops the interval', async () => {
-    collector.record({ statusCode: 200, latencyMs: 30, url: 'http://a.com', method: 'GET' });
+    collector.record(r(200, 30));
 
     await collector.flush();
 
@@ -112,10 +122,10 @@ describe('MetricsCollector', () => {
   });
 
   it('window RPS is positive when requests were recorded', async () => {
-    collector.record({ statusCode: 200, latencyMs: 30, url: 'http://a.com', method: 'GET' });
-    collector.record({ statusCode: 200, latencyMs: 40, url: 'http://a.com', method: 'GET' });
+    collector.record(r(200, 30));
+    collector.record(r(200, 40));
 
-    vi.advanceTimersByTime(50); // ensure windowEndMs > windowStartMs so RPS > 0
+    vi.advanceTimersByTime(50);
     await collector.flush();
 
     const [, payload] = (redis.publish as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];

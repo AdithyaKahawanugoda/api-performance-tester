@@ -1,13 +1,11 @@
 import { request as undiciRequest } from 'undici';
+import { performance } from 'perf_hooks';
 import type { TestEndpoint } from '@api-perf/shared';
 
 export interface RequestResult {
   statusCode: number;
   latencyMs: number;
   ttfbMs?: number;
-  connectMs?: number;
-  dnsMs?: number;
-  tlsMs?: number;
   responseSizeBytes: number;
   errorBody?: string;
   cacheStatus: 'hit' | 'miss' | 'unknown';
@@ -51,6 +49,9 @@ export async function executeRequest(
 
     const bodyStr = endpoint.body != null ? JSON.stringify(endpoint.body) : undefined;
 
+    // undici.request() resolves when response headers are received (before body),
+    // so the time to resolve is the TTFB.
+    const requestStart = performance.now();
     const res = await undiciRequest(endpoint.url, {
       method: endpoint.method,
       headers,
@@ -59,16 +60,9 @@ export async function executeRequest(
       bodyTimeout: timeoutMs,
       headersTimeout: timeoutMs,
     });
+    const ttfbMs = Math.max(0, performance.now() - requestStart);
 
     const { statusCode, headers: resHeaders, body } = res;
-    // undici populates timings at runtime; TypeScript types may lag behind
-    const t = ((res as unknown as Record<string, unknown>).timings ?? {}) as Record<string, number>;
-    const ttfbMs = t.headers != null && t.start != null ? Math.max(0, t.headers - t.start) : undefined;
-    const dnsMs  = t.socket  != null && t.start   != null ? Math.max(0, t.socket  - t.start)   : undefined;
-    const connectMs = t.connect != null && t.socket != null ? Math.max(0, t.connect - t.socket) : undefined;
-    const tlsMs  = t.tls    != null && t.connect != null ? Math.max(0, t.tls    - t.connect) : undefined;
-
-    const latencyMs = ttfbMs ?? (t.done != null && t.start != null ? t.done - t.start : 0);
 
     const isError = statusCode >= 400;
     const contentLengthRaw = resHeaders['content-length'];
@@ -88,13 +82,13 @@ export async function executeRequest(
       if (!isNaN(contentLength)) responseSizeBytes = contentLength;
     }
 
+    // Total latency = TTFB + body download time
+    const latencyMs = Math.max(ttfbMs, performance.now() - requestStart);
+
     return {
       statusCode,
       latencyMs,
       ttfbMs,
-      connectMs,
-      dnsMs,
-      tlsMs,
       responseSizeBytes,
       errorBody,
       cacheStatus: parseCacheStatus(resHeaders as Record<string, string | string[] | undefined>),

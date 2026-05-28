@@ -5,14 +5,16 @@ type InsightType = 'ok' | 'warn' | 'err' | 'info';
 
 interface Insight {
   type: InsightType;
+  title: string;
   text: string;
+  note?: string;
 }
 
-const TYPE_STYLE: Record<InsightType, { color: string; bg: string; border: string; symbol: string }> = {
-  ok:   { color: 'var(--ok)',   bg: 'color-mix(in oklch, var(--ok) 9%, var(--bg-1))',   border: 'color-mix(in oklch, var(--ok) 28%, var(--line))',   symbol: '✓' },
-  warn: { color: 'var(--warn)', bg: 'color-mix(in oklch, var(--warn) 9%, var(--bg-1))', border: 'color-mix(in oklch, var(--warn) 28%, var(--line))', symbol: '!' },
-  err:  { color: 'var(--err)',  bg: 'color-mix(in oklch, var(--err) 9%, var(--bg-1))',  border: 'color-mix(in oklch, var(--err) 28%, var(--line))',  symbol: '!' },
-  info: { color: 'var(--info)', bg: 'color-mix(in oklch, var(--info) 9%, var(--bg-1))', border: 'color-mix(in oklch, var(--info) 28%, var(--line))', symbol: 'i' },
+const TYPE_STYLE: Record<InsightType, { color: string; bg: string; border: string; icon: string }> = {
+  ok:   { color: 'var(--ok)',   bg: 'color-mix(in oklch, var(--ok) 8%, var(--bg-1))',   border: 'color-mix(in oklch, var(--ok) 25%, var(--line))',   icon: '✓' },
+  warn: { color: 'var(--warn)', bg: 'color-mix(in oklch, var(--warn) 8%, var(--bg-1))', border: 'color-mix(in oklch, var(--warn) 25%, var(--line))', icon: '▲' },
+  err:  { color: 'var(--err)',  bg: 'color-mix(in oklch, var(--err) 8%, var(--bg-1))',  border: 'color-mix(in oklch, var(--err) 25%, var(--line))',  icon: '✕' },
+  info: { color: 'var(--info)', bg: 'color-mix(in oklch, var(--info) 8%, var(--bg-1))', border: 'color-mix(in oklch, var(--info) 25%, var(--line))', icon: 'ℹ' },
 };
 
 function buildInsights(runs: TestRun[]): Insight[] {
@@ -21,7 +23,7 @@ function buildInsights(runs: TestRun[]): Insight[] {
 
   const insights: Insight[] = [];
 
-  // Fastest at p95
+  // Fastest p95
   const byP95 = [...valid].sort((a, b) => a.metrics!.p95 - b.metrics!.p95);
   const fastestP95 = byP95[0];
   const slowestP95 = byP95[byP95.length - 1];
@@ -29,7 +31,9 @@ function buildInsights(runs: TestRun[]): Insight[] {
     const pct = ((slowestP95.metrics!.p95 - fastestP95.metrics!.p95) / slowestP95.metrics!.p95 * 100).toFixed(0);
     insights.push({
       type: 'ok',
-      text: `${fastestP95.config.name} has the lowest p95 latency (${formatLatency(fastestP95.metrics!.p95)}) — ${pct}% faster than ${slowestP95.config.name} (${formatLatency(slowestP95.metrics!.p95)}).`,
+      title: 'Best Tail Latency',
+      text: `"${fastestP95.config.name}" has the lowest p95 latency at ${formatLatency(fastestP95.metrics!.p95)} — ${pct}% faster than "${slowestP95.config.name}" (${formatLatency(slowestP95.metrics!.p95)}).`,
+      note: 'p95 = 95th percentile — 95% of requests completed faster than this. A good measure of tail performance without being skewed by rare worst-case spikes.',
     });
   }
 
@@ -40,10 +44,17 @@ function buildInsights(runs: TestRun[]): Insight[] {
   if (topRps.id !== botRps.id) {
     insights.push({
       type: 'info',
-      text: `Highest throughput: ${topRps.config.name} at ${formatRps(topRps.metrics!.rps)} — vs ${formatRps(botRps.metrics!.rps)} for ${botRps.config.name}.`,
+      title: 'Highest Throughput',
+      text: `"${topRps.config.name}" processed the most requests at ${formatRps(topRps.metrics!.rps)} — vs ${formatRps(botRps.metrics!.rps)} for "${botRps.config.name}".`,
+      note: 'RPS (Requests Per Second) = number of requests completed per second, averaged over the test duration. Higher RPS means greater capacity.',
     });
   } else {
-    insights.push({ type: 'info', text: `All runs achieved similar throughput around ${formatRps(topRps.metrics!.rps)}.` });
+    insights.push({
+      type: 'info',
+      title: 'Similar Throughput',
+      text: `All runs achieved similar throughput, averaging around ${formatRps(topRps.metrics!.rps)}.`,
+      note: 'RPS (Requests Per Second) = average number of completed requests per second across the test.',
+    });
   }
 
   // Error rates
@@ -52,17 +63,28 @@ function buildInsights(runs: TestRun[]): Insight[] {
   const worstErr = [...valid].sort((a, b) => b.metrics!.errorRate - a.metrics!.errorRate)[0];
 
   if (allZero) {
-    insights.push({ type: 'ok', text: 'All runs recorded zero errors — excellent reliability across the board.' });
+    insights.push({
+      type: 'ok',
+      title: 'Zero Errors Across All Runs',
+      text: 'Every run completed all requests successfully — no 4xx/5xx responses or timeouts recorded.',
+    });
   } else if (allUnder1) {
-    insights.push({ type: 'ok', text: `All runs stayed under 1% error rate — solid reliability across the board.` });
+    insights.push({
+      type: 'ok',
+      title: 'Healthy Reliability',
+      text: 'All runs stayed below 1% error rate — solid reliability across the board.',
+      note: 'Error rate = (4xx/5xx responses + timeouts) ÷ total requests. Below 1% is generally considered healthy.',
+    });
   } else {
     insights.push({
       type: 'warn',
-      text: `${worstErr.config.name} has the highest error rate (${formatErrorRate(worstErr.metrics!.errorRate)}). Review its status code breakdown to determine the failure mode.`,
+      title: 'Reliability Concern',
+      text: `"${worstErr.config.name}" has the highest error rate at ${formatErrorRate(worstErr.metrics!.errorRate)}. Review its status code breakdown to identify the failure mode.`,
+      note: 'Error rate = requests returning a 4xx/5xx status or timeout ÷ total requests. Rates above 1% warrant investigation.',
     });
   }
 
-  // Tail latency consistency (p99 / p50 spread)
+  // Tail latency consistency
   const spreads = valid
     .filter((r) => r.metrics!.p50 > 0)
     .map((r) => ({ name: r.config.name, spread: r.metrics!.p99 / r.metrics!.p50 }))
@@ -74,12 +96,16 @@ function buildInsights(runs: TestRun[]): Insight[] {
     if (widest.spread > 2.5) {
       insights.push({
         type: 'warn',
-        text: `${widest.name} has the widest tail — p99 is ${widest.spread.toFixed(1)}× its median, suggesting latency spikes. ${tightest.name} is the most consistent at ${tightest.spread.toFixed(1)}× median.`,
+        title: 'Latency Variance',
+        text: `"${widest.name}" has the widest tail — p99 is ${widest.spread.toFixed(1)}× its median, suggesting latency spikes. "${tightest.name}" is the most consistent at ${tightest.spread.toFixed(1)}× median.`,
+        note: 'p99/p50 ratio measures tail variance. A ratio above 3× means worst-case requests are dramatically slower than the median — often a sign of resource contention.',
       });
     } else {
       insights.push({
         type: 'info',
-        text: `Tail consistency — ${tightest.name} is tightest (p99 is ${tightest.spread.toFixed(1)}× median) while ${widest.name} is widest (${widest.spread.toFixed(1)}×). All runs show acceptable variance.`,
+        title: 'Tail Consistency',
+        text: `"${tightest.name}" shows the tightest distribution (p99 is ${tightest.spread.toFixed(1)}× median) while "${widest.name}" is widest (${widest.spread.toFixed(1)}×). All runs show acceptable variance.`,
+        note: 'p50 = median request time; p99 = worst 1% of requests. A ratio close to 1× indicates very consistent response times.',
       });
     }
   }
@@ -94,7 +120,9 @@ function buildInsights(runs: TestRun[]): Insight[] {
     if (diff > 10) {
       insights.push({
         type: 'ok',
-        text: `${fastTtfb.config.name} has the lowest avg TTFB (${formatLatency(fastTtfb.metrics!.avgTtfbMs ?? 0)}) — ${formatLatency(diff)} faster server response than ${slowTtfb.config.name} (${formatLatency(slowTtfb.metrics!.avgTtfbMs ?? 0)}).`,
+        title: 'Fastest Server Response',
+        text: `"${fastTtfb.config.name}" has the lowest avg TTFB at ${formatLatency(fastTtfb.metrics!.avgTtfbMs ?? 0)} — the server starts responding ${formatLatency(diff)} faster than in "${slowTtfb.config.name}".`,
+        note: 'TTFB (Time to First Byte) = elapsed time from sending the request to receiving the first response byte. Lower TTFB = faster server processing.',
       });
     }
   }
@@ -119,7 +147,9 @@ function buildInsights(runs: TestRun[]): Insight[] {
     if (largeBytes - smallBytes > 1024 && smallBytes !== Infinity) {
       insights.push({
         type: 'info',
-        text: `${smallest.config.name} returns smaller average responses (${formatBytes(smallBytes)}) vs ${largest.config.name} (${formatBytes(largeBytes)}) — better for bandwidth-constrained clients.`,
+        title: 'Response Size Comparison',
+        text: `"${smallest.config.name}" returns smaller average responses (${formatBytes(smallBytes)}) compared to "${largest.config.name}" (${formatBytes(largeBytes)}) — more efficient for bandwidth-constrained clients.`,
+        note: 'Average response size is computed across all endpoints that returned a Content-Length header or had body drain enabled.',
       });
     }
   }
@@ -139,12 +169,12 @@ export function CompareInsights({ runs }: Props) {
     <div className="card">
       <div className="card__head">
         <div className="card__title">Comparison Insights</div>
-        <span style={{ fontSize: 11, color: 'var(--fg-3)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+        <span style={{ fontSize: 11, color: 'var(--fg-3)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           Auto-generated
         </span>
       </div>
-      <div className="card__body">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="card__body" style={{ padding: '10px 14px 14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {insights.map((ins, i) => {
             const s = TYPE_STYLE[ins.type];
             return (
@@ -152,31 +182,67 @@ export function CompareInsights({ runs }: Props) {
                 key={i}
                 style={{
                   display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  padding: '9px 12px',
+                  gap: 12,
+                  padding: '11px 14px',
                   background: s.bg,
                   border: `1px solid ${s.border}`,
                   borderLeft: `3px solid ${s.color}`,
                   borderRadius: 'var(--radius-sm)',
                 }}
               >
-                <span
-                  style={{
+                {/* Icon */}
+                <div style={{
+                  flexShrink: 0,
+                  width: 22,
+                  height: 22,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: `color-mix(in oklch, ${s.color} 15%, transparent)`,
+                  borderRadius: '50%',
+                  marginTop: 1,
+                }}>
+                  <span style={{
                     color: s.color,
                     fontWeight: 700,
-                    fontSize: 11,
+                    fontSize: 10,
                     fontFamily: 'var(--font-mono)',
-                    minWidth: 14,
-                    marginTop: 1,
-                    flexShrink: 0,
-                  }}
-                >
-                  {s.symbol}
-                </span>
-                <span style={{ fontSize: 12.5, color: 'var(--fg-1)', lineHeight: 1.55 }}>
-                  {ins.text}
-                </span>
+                    lineHeight: 1,
+                  }}>
+                    {s.icon}
+                  </span>
+                </div>
+
+                {/* Content */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    color: s.color,
+                    marginBottom: 4,
+                    lineHeight: 1,
+                  }}>
+                    {ins.title}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--fg-0)', lineHeight: 1.6 }}>
+                    {ins.text}
+                  </div>
+                  {ins.note && (
+                    <div style={{
+                      marginTop: 6,
+                      paddingTop: 6,
+                      borderTop: `1px solid ${s.border}`,
+                      fontSize: 11,
+                      color: 'var(--fg-3)',
+                      lineHeight: 1.5,
+                      fontStyle: 'italic',
+                    }}>
+                      {ins.note}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}

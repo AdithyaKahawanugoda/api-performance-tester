@@ -23,12 +23,13 @@ interface Props {
 }
 
 type Tab = 'overview' | 'endpoints' | 'config';
-type ChartKey = 'latency' | 'rps' | 'errorRate';
+type ChartKey = 'latency' | 'rps' | 'errorRate' | 'systemResources';
 
 const CHART_TITLES: Record<ChartKey, string> = {
   latency: 'Latency over time',
   rps: 'RPS over time',
   errorRate: 'Error rate over time',
+  systemResources: 'System Resources',
 };
 
 function toMetricsWindows(windows: RunWindow[]): MetricsWindow[] {
@@ -267,12 +268,13 @@ export function RunResultView({ run }: Props) {
             </div>
 
             {mw && (
-              <div className="card">
+              <div className="card chart-card" onClick={() => setZoomed('systemResources')}>
                 <div className="card__head">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div className="card__title">System Resources</div>
                     <InfoTooltip text="Worker CPU usage (%) and heap memory (MB) over the test duration. A steadily rising memory line may indicate a memory leak; CPU spikes correlate with load bursts." />
                   </div>
+                  <Icon name="expand" size={12} className="chart-hint" style={{ color: 'var(--fg-2)' }} />
                 </div>
                 <div className="card__body">
                   <SystemResourceChart windows={m.windows!} height={160} />
@@ -498,9 +500,10 @@ export function RunResultView({ run }: Props) {
               </button>
             </div>
             <div className="card__body">
-              {zoomed === 'latency'   && <LatencyLineChart data={mw} height={260} />}
-              {zoomed === 'rps'       && <RpsChart data={mw} height={260} />}
-              {zoomed === 'errorRate' && <ErrorRateChart data={mw} height={260} />}
+              {zoomed === 'latency'         && <LatencyLineChart data={mw} height={260} />}
+              {zoomed === 'rps'             && <RpsChart data={mw} height={260} />}
+              {zoomed === 'errorRate'       && <ErrorRateChart data={mw} height={260} />}
+              {zoomed === 'systemResources' && <SystemResourceChart windows={m.windows!} height={300} />}
             </div>
           </div>
         </div>

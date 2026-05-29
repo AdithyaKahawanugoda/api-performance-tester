@@ -17,7 +17,6 @@ export interface TestConfig {
   endpoints: TestEndpoint[];
   concurrency: number;
   totalRequests: number;
-  durationSeconds?: number;
   rampUpSeconds?: number;
   timeout: number;
   retries: number;

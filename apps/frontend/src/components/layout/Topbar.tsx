@@ -58,6 +58,7 @@ export function Topbar() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const connectionStatus = useWsStore((s) => s.connectionStatus);
+  const reconnectAttempt = useWsStore((s) => s.reconnectAttempt);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
 
   useEffect(() => { setMounted(true); }, []);
@@ -65,14 +66,15 @@ export function Topbar() {
   const crumbs = buildCrumbs(pathname);
 
   const dotClass =
-    connectionStatus === 'connected'  ? 'dot' :
-    connectionStatus === 'connecting' ? 'dot dot--warn' :
-                                        'dot dot--err';
+    connectionStatus === 'connected'                               ? 'dot' :
+    connectionStatus === 'connecting' || connectionStatus === 'reconnecting' ? 'dot dot--warn' :
+                                                                     'dot dot--err';
 
   const connLabel =
-    connectionStatus === 'connected'  ? 'Live' :
-    connectionStatus === 'connecting' ? 'Connecting' :
-                                        'Offline';
+    connectionStatus === 'connected'    ? 'Live' :
+    connectionStatus === 'connecting'   ? 'Connecting' :
+    connectionStatus === 'reconnecting' ? `Reconnecting${reconnectAttempt > 1 ? ` (${reconnectAttempt})` : ''}` :
+                                          'Offline';
 
   return (
     <header className="topbar">

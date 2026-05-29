@@ -7,7 +7,11 @@ export interface IRequestLog extends Document {
   url?: string;
   statusCode?: number;
   latencyMs?: number;
+  ttfbMs?: number;
+  responseSizeBytes?: number;
+  cacheStatus?: 'hit' | 'miss' | 'unknown';
   error?: string;
+  errorBody?: string;
   timestamp: Date;
   requestId?: string;
 }
@@ -20,7 +24,11 @@ const RequestLogSchema = new Schema<IRequestLog>(
     url: { type: String },
     statusCode: { type: Number },
     latencyMs: { type: Number },
+    ttfbMs: { type: Number },
+    responseSizeBytes: { type: Number },
+    cacheStatus: { type: String, enum: ['hit', 'miss', 'unknown'] },
     error: { type: String },
+    errorBody: { type: String },
     timestamp: { type: Date, default: () => new Date() },
     requestId: { type: String },
   },

@@ -17,7 +17,6 @@ export const CreateTestConfigSchema = z.object({
   endpoints: z.array(TestEndpointSchema).min(1, 'At least one endpoint required').max(20),
   concurrency: z.number().int().min(1).max(500).default(DEFAULT_CONCURRENCY),
   totalRequests: z.number().int().min(1).max(1_000_000),
-  durationSeconds: z.number().int().min(1).optional(),
   rampUpSeconds: z.number().int().min(0).optional().default(0),
   timeout: z.number().int().min(100).max(30_000).default(DEFAULT_TIMEOUT),
   retries: z.number().int().min(0).max(5).default(DEFAULT_RETRIES),

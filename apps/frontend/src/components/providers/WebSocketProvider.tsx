@@ -33,19 +33,22 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         case 'REQUEST_LOG':
           addLogEntry(event.payload);
           break;
+        case 'WORKER_PROGRESS':
+          // Progress is used by the live view; no store action needed currently.
+          break;
         case 'RUN_STATUS_CHANGED':
           setRunStatus(event.payload.runId, event.payload.status);
-          qc.invalidateQueries({ queryKey: ['runs', event.payload.runId] });
+          void qc.invalidateQueries({ queryKey: ['runs', event.payload.runId] });
           break;
         case 'RUN_COMPLETED':
           setRunStatus(event.payload.runId, 'completed');
-          qc.invalidateQueries({ queryKey: ['runs', event.payload.runId] });
-          qc.invalidateQueries({ queryKey: ['runs'] });
+          void qc.invalidateQueries({ queryKey: ['runs', event.payload.runId] });
+          void qc.invalidateQueries({ queryKey: ['runs'] });
           break;
         case 'RUN_FAILED':
           setRunStatus(event.payload.runId, 'failed');
-          qc.invalidateQueries({ queryKey: ['runs', event.payload.runId] });
-          qc.invalidateQueries({ queryKey: ['runs'] });
+          void qc.invalidateQueries({ queryKey: ['runs', event.payload.runId] });
+          void qc.invalidateQueries({ queryKey: ['runs'] });
           break;
       }
     });
@@ -53,8 +56,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubscribe();
     };
-  }, [ws, addMetricsWindow, addLogEntry, setRunStatus, setStatus]);
+  }, [ws, addMetricsWindow, addLogEntry, setRunStatus, setStatus, qc]);
 
+  // Keep the WS client's internal subscription set in sync with wsStore
   useEffect(() => {
     subscribedRuns.forEach((runId) => ws.subscribe(runId));
   }, [ws, subscribedRuns]);

@@ -278,6 +278,11 @@ input, textarea, select { font-family: inherit; }
 .conn .dot--warn {
   background: var(--warn);
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--warn) 20%, transparent);
+  animation: pulse-warn 1s ease-in-out infinite;
+}
+@keyframes pulse-warn {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 .conn .dot--err {
   background: var(--err);
